@@ -10,6 +10,31 @@ module.exports = function(grunt) {
       '* Copyright (c) <%= grunt.template.today("yyyy") %> <%= pkg.author.name %>;' +
       ' Licensed <%= pkg.license %> */\n',
     // Task configuration.
+    tags: {
+      dist: {
+        options: {
+          scriptTemplate: '<script type="text/javascript" src="{{ path }}"></script>',
+          openTag: '<!-- start script template tags -->',
+          closeTag: '<!-- end script template tags -->'
+        },
+        src: [
+          'dist/js/demokratiappen.min.js'
+        ],
+        dest: 'dist/index.html'
+      },
+      development: {
+        options: {
+          scriptTemplate: '<script type="text/javascript" src="{{ path }}"></script>',
+          openTag: '<!-- start script template tags -->',
+          closeTag: '<!-- end script template tags -->'
+        },
+        src: [
+          'app/js/*.js',
+          '!app/js/initialize_parse.js'
+        ],
+        dest: 'app/index.html'
+      }
+    },
     copy: {
       dist: {
         cwd: 'app',
@@ -111,8 +136,15 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-watch');
   grunt.loadNpmTasks('grunt-contrib-clean');
   grunt.loadNpmTasks('grunt-contrib-copy');
+  grunt.loadNpmTasks('grunt-script-link-tags');
 
   // Default task.
-  grunt.registerTask('default', ['clean', 'concat', 'uglify']);
+  grunt.registerTask('default', [
+    'clean',
+    'copy',
+    'concat',
+    'uglify',
+    'tags'
+  ]);
 
 };

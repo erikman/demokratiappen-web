@@ -9,7 +9,7 @@ if ip_address && user && password
   ftp.passive = true
   ftp.login user, password
 
-  entries = Dir.glob('../app/**/*').sort
+  entries = Dir.glob('dist/**/*').sort
 
   entries.each do |file|
     if File.directory? file
@@ -27,5 +27,5 @@ if ip_address && user && password
 
   ftp.close
 else
-  puts "Usage: `./host_deploy <ftp-ip-address> <ftp-username> <ftp-password>"
+  puts "Usage: `./hosted_deploy <ftp-ip-address> <ftp-username> <ftp-password>"
 end
