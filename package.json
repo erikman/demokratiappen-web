@@ -1,0 +1,21 @@
+{
+  "author": {
+    "name": "Demokratiappen"
+  },
+  "name": "demokratiappen",
+  "version": "0.0.1",
+  "homepage": "http://demokratiappen.se/",
+  "license": "GNU GENERAL PUBLIC LICENSE",
+  "engines": {
+    "node": ">= 0.10.0"
+  },
+  "devDependencies": {
+    "grunt": "^0.4.4",
+    "grunt-contrib-jshint": "^0.10.0",
+    "grunt-contrib-watch": "^0.6.1",
+    "grunt-contrib-concat": "^0.4.0",
+    "grunt-contrib-uglify": "^0.4.0",
+    "grunt-contrib-clean": "^0.5.0",
+    "grunt-contrib-copy": "^0.5.0"
+  }
+}

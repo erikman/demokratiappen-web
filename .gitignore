@@ -1,4 +1,6 @@
 /app/js/initialize_parse.js
+/node_modules/*
+/dist/*
 .DS_Store
 *.swp
 *~
