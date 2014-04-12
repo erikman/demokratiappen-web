@@ -21,7 +21,7 @@ if ip_address && user && password
       end
     else
       puts "Transferring: #{file}"
-      ftp.putbinaryfile file, file.gsub('../parse/public/', '')
+      ftp.putbinaryfile file, file.gsub('dist/', '')
     end
   end
 

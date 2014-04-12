@@ -30,7 +30,7 @@ module.exports = function(grunt) {
         },
         src: [
           'app/js/*.js',
-          '!app/js/initialize_parse.js'
+          '!app/js/bookmarklet.js'
         ],
         dest: 'app/index.html'
       }
@@ -38,7 +38,7 @@ module.exports = function(grunt) {
     copy: {
       dist: {
         cwd: 'app',
-        src: ['**', '!js/*', '!scripts/*'],
+        src: ['**', '!js/*'],
         dest: 'dist',
         expand: true
       }
@@ -56,7 +56,6 @@ module.exports = function(grunt) {
       dist: {
         src: [
           'app/js/**/*.js',
-          '!app/js/initialize_parse.js',
           '!app/js/bookmarklet.js'
         ],
         dest: 'dist/js/<%= pkg.name %>.js'
@@ -114,7 +113,6 @@ module.exports = function(grunt) {
       concat: {
         files: [
           'app/js/**/*.js',
-          '!app/js/initialize_parse.js',
           '!app/js/bookmarklet.js'
         ],
         tasks: ['concat']
