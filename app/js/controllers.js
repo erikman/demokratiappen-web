@@ -69,7 +69,8 @@ democracyControllers.controller('LoginController', ['$scope', '$location',
 democracyControllers.controller('AddPageController', ['$scope', '$location',
     '$window', 'LoginService',
     function($scope, $location, $window, LoginService) {
-  $scope.loginService = LoginService
+  $scope.loginService = LoginService;
+  $scope.tags = [];
 
   var indexOf = function(array, x) {
     var result = -1;
@@ -210,7 +211,7 @@ democracyControllers.controller('AddPageController', ['$scope', '$location',
     tag.down = false;
   };
 
-  function getTopics() {
+  getTopics = _.once( function() {
     $scope.topics = [];
 
     var query = new Parse.Query("Tag");
@@ -224,49 +225,47 @@ democracyControllers.controller('AddPageController', ['$scope', '$location',
     }, function (error) {
       alert("Connection to Parse failed, no topics collected.");
     });
-  }
+  });
 
-  function getTags() {
-    var Tag = Parse.Object.extend("Tag");
-
-    // Convert tag id to Tag objects with a name
-    $scope.tags = [];
-    var tagsArg = $location.search().tags;
-
-    if (tagsArg) {
-      var tagIds = filterTags(tagsArg);
-
-      var query = new Parse.Query("Tag");
-      query.containedIn("objectId", tagIds);
-      query.find().then(function (tags) {
-        $scope.tags = tags;
-        $scope.$apply();
-      }, function (error) {
-        alert("Connection to Parse failed, no tags collected.");
-      });
-    }
-  }
-
-  function filterTags(tagsArg) {
-    function splitCollectionHelper(collection) { return collection.split(","); }
-
-    var tagIds = splitCollectionHelper(tagsArg);
-    var relevanceArg = splitCollectionHelper($location.search().relevance);
-
-    var parsedRelevanceArg = _.map(relevanceArg, function(relevance) {
-      return parseFloat(relevance);
-    });
-
-    var tagsWithRelevance = _.zip(tagIds, parsedRelevanceArg);
-
-    var sortedDescendingListOfRelevance = _.sortBy(tagsWithRelevance, function(tagWithRelevance) {
-      return tagWithRelevance[1];
+  // Filter which tags we should show to the user
+  //
+  // input: [ { relevance: 0.8, tag: Parse.Object('Tag' } ]
+  // output: Array of Parse.Object.Tag objects
+  function filterTags(relevanceTags) {
+    var sortedDescendingListOfRelevance
+     = _.sortBy(relevanceTags, function(tagWithRelevance) {
+      return tagWithRelevance.relevance;
     }).reverse();
 
-    var tagIdList = _.pluck(_.take(sortedDescendingListOfRelevance, 5), [0]);
-
+    var tagIdList = _.pluck(_.take(sortedDescendingListOfRelevance, 5), 'tag');
     return tagIdList;
   }
+
+  getTags = _.once(function(urlid) {
+    // We got a url-id through the argument list, look it up in the database
+    // and present the associated tags.
+    // This became somewhat ugly because Parse.Query.include doesn't work
+    // with our combination of relevance and a Tag object,
+    // and Parse.Object.fetchAll seems to have a bug so it only throws
+    // exceptions when used.
+    var tags;
+    var urlQuery = new Parse.Query('Url');
+    urlQuery.get(urlid).then(function (urlObject) {
+      tags = filterTags(urlObject.get('relevanceTags'));
+
+      // We have our tags, need to do fetch on them to get the names.
+      var promises = [];
+      for (var i = 0; i < tags.length; i++) {
+        promises[i] = tags[i].fetch();  
+      }
+
+      Parse.Promise.when(promises).then(function (realTags) {
+        $scope.$apply(function() {
+          $scope.tags = tags;
+        });
+      });
+    });
+  });
 
   function queryPage() {
     var title = $location.search().title;
@@ -277,9 +276,10 @@ democracyControllers.controller('AddPageController', ['$scope', '$location',
     if (url) {
       $scope.url = url;
     }
+    var urlid = $location.search().urlid;
 
     if (LoginService.stateLoggedIn == LoginService.LOGGED_IN) {
-      getTags();
+      getTags(urlid);
       getTopics();
     }
   }
