@@ -1245,7 +1245,7 @@ var demokratiappen = {
         if (request.status == 200) {
           // Extract the tag ids and encode as comma separated string for our
           // GET request.
-          var resultJSON = JSON.parse(request.responseText);
+          var resultJSON = JSON.parse(request.responseText).result;
 
           var title_part = '?title=' + encodeURIComponent(scrapeResult.title);
           var url_part = '&url=' + encodeURIComponent(document.location.href);
