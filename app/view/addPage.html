@@ -41,6 +41,7 @@
     <div class="row">
       <div data-ng-repeat="tag in tags" ng-include="'tag.html'">
       </div>
+      <button type="button" ng-class="{ 'btn': true, 'btn-default': true, 'col-xs-12': true, 'col-md-6': true, 'disabled': allTags.length == tags.length}" data-ng-click="showMoreTags()">Visa fler</button>
     </div>
 
     <div style="text-align: center">

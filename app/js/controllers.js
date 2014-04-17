@@ -83,7 +83,7 @@ democracyControllers.controller('AddPageController', ['$scope', '$location',
     return result;
   }
 
-  // Update user tags table 
+  // Update user tags table
   // Return promise when the tags are updated
   function updateUserTags(positiveTags, negativeTags) {
     // Add tags to the user object, first update the tags we already have
@@ -202,6 +202,10 @@ democracyControllers.controller('AddPageController', ['$scope', '$location',
     }
   };
 
+  $scope.showMoreTags = function() {
+    $scope.tags = $scope.allTags;
+  }
+
   $scope.abort = function() {
     $window.history.back();
   };
@@ -213,6 +217,7 @@ democracyControllers.controller('AddPageController', ['$scope', '$location',
 
   getTopics = _.once( function() {
     $scope.topics = [];
+    $scope.allTopics = [];
 
     var query = new Parse.Query("Tag");
     query.equalTo("type", "topic");
@@ -227,16 +232,23 @@ democracyControllers.controller('AddPageController', ['$scope', '$location',
     });
   });
 
+  // Sort list by relevance
+  //
+  // input: [ { relevance: 0.8, tag: Parse.Object('Tag' } ]
+  // output: list sorted in descending order by relevance
+  function sortTagsByRelevance(relevanceTags) {
+    var sortedDescendingListOfRelevance
+      = _.sortBy(relevanceTags, function(tagWithRelevance) {
+        return tagWithRelevance.relevance;
+    }).reverse();
+    return sortedDescendingListOfRelevance;
+  }
+
   // Filter which tags we should show to the user
   //
   // input: [ { relevance: 0.8, tag: Parse.Object('Tag' } ]
   // output: Array of Parse.Object.Tag objects
-  function filterTags(relevanceTags) {
-    var sortedDescendingListOfRelevance
-     = _.sortBy(relevanceTags, function(tagWithRelevance) {
-      return tagWithRelevance.relevance;
-    }).reverse();
-
+  function filterSortedTags(sortedDescendingListOfRelevance) {
     var tagIdList = _.pluck(_.take(sortedDescendingListOfRelevance, 5), 'tag');
     return tagIdList;
   }
@@ -251,18 +263,27 @@ democracyControllers.controller('AddPageController', ['$scope', '$location',
     var tags;
     var urlQuery = new Parse.Query('Url');
     urlQuery.get(urlid).then(function (urlObject) {
-      tags = filterTags(urlObject.get('relevanceTags'));
+      var relevanceTags = urlObject.get('relevanceTags');
+      var sortedTags = sortTagsByRelevance(relevanceTags);
+
+      // Strip the relevance from the tags
+      var allTags = _.pluck(sortedTags, 'tag');
+      $scope.allTags = allTags;
+
+      // Filter out which tags we display in the first round to the user.
+      tags = filterSortedTags(sortedTags);
 
       // We have our tags, need to do fetch on them to get the names.
       var promises = [];
-      for (var i = 0; i < tags.length; i++) {
-        promises[i] = tags[i].fetch();  
+      for (var i = 0; i < allTags.length; i++) {
+        promises[i] = allTags[i].fetch();
       }
 
-      Parse.Promise.when(promises).then(function (realTags) {
-        $scope.$apply(function() {
-          $scope.tags = tags;
-        });
+      // Wait for all fetches to complete, then update $scope.tags
+      return Parse.Promise.when(promises);
+    }).then(function (realTags) {
+      $scope.$apply(function() {
+        $scope.tags = tags;
       });
     });
   });
@@ -342,7 +363,7 @@ democracyControllers.controller('ListPagesController', ['$scope', 'LoginService'
       $scope.$apply();
     });
   }
-  
+
   $scope.$watch(function() {
     return LoginService.stateLoggedIn;
   }, queryPage);
