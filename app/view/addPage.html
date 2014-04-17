@@ -1,6 +1,24 @@
 <div ng-include="'/view/login.html'"></div>
 
 <div data-ng-controller="AddPageController" data-ng-hide="loginService.stateLoggedIn != loginService.LOGGED_IN" class="well">
+
+  <div class="alert alert-info" ng-show="addPageState == AddPageState.LOADING_TAGS">
+    Laddar...
+  </div>
+  <div class="alert alert-info" ng-show="addPageState == AddPageState.SAVING">
+    Sparar...
+  </div>
+  <div class="alert alert-info" ng-show="addPageState == AddPageState.SAVED">
+    Sparat!
+  </div>
+
+  <div class="alert alert-danger alert-dismissable" ng-show="addPageState == AddPageState.SAVE_ERROR">
+    Tyvärr uppstod ett problem vid sparning. Var god kontrollera att du är ansluten till internet och försök igen.
+  </div>
+   <div class="alert alert-danger alert-dismissable" ng-show="addPageState == AddPageState.LOAD_ERROR">
+    Tyvärr uppstod ett problem när vi skulle ladda taggar för sidan. Var god kontrollera att du är ansluten till internet och försök igen.
+  </div>
+
   <form name="addPageForm" role="form">
     <div class="form-group">
       <label for="titleInput">Titel</label>
@@ -45,9 +63,9 @@
     </div>
 
     <div style="text-align: center">
-      <button data-ng-click="abort()" class="btn btn-default" style="margin-top: 20px; margin-right: 80px">Avbryt</button>
+      <button data-ng-click="abort()" ng-class="{'btn': true, 'btn-default': true, 'disabled': addPageState != AddPageState.WAIT_FOR_USER_INPUT}" style="margin-top: 20px; margin-right: 80px">Avbryt</button>
 
-      <button data-ng-click="post();" class="btn btn-primary" style="margin-top: 20px; font-weight:bold ">Spara</button>
+      <button data-ng-click="post();" ng-class="{'btn': true, 'btn-primary': true, 'disabled': addPageState != AddPageState.WAIT_FOR_USER_INPUT}" style="margin-top: 20px; font-weight:bold ">Spara</button>
     </div>
   </form>
 </div>

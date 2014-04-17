@@ -67,10 +67,22 @@ democracyControllers.controller('LoginController', ['$scope', '$location',
 
 
 democracyControllers.controller('AddPageController', ['$scope', '$location',
-    '$window', 'LoginService',
-    function($scope, $location, $window, LoginService) {
+    '$window', '$timeout', 'LoginService',
+    function($scope, $location, $window, $timeout, LoginService) {
   $scope.loginService = LoginService;
   $scope.tags = [];
+
+  // State variable for this controller
+  var AddPageState = {
+    LOADING_TAGS: 0,
+    WAIT_FOR_USER_INPUT: 1,
+    SAVING: 2,
+    SAVED: 3,
+    SAVE_ERROR: 4,
+    LOAD_ERROR: 5
+  };
+  $scope.AddPageState = AddPageState;
+  $scope.addPageState = AddPageState.LOADING_TAGS;
 
   var indexOf = function(array, x) {
     var result = -1;
@@ -152,6 +164,8 @@ democracyControllers.controller('AddPageController', ['$scope', '$location',
 
   $scope.post = function () {
     if (($scope.title.length > 0) && ($scope.url.length > 0)) {
+      $scope.addPageState = AddPageState.SAVING;
+
       // Create new page object to fill in
       var Page = Parse.Object.extend("Page");
       var page = new Page();
@@ -185,19 +199,34 @@ democracyControllers.controller('AddPageController', ['$scope', '$location',
       Parse.Promise.when([
         updateUserTags(upTags, downTags),
         page.save()]).then(function() {
-          // Clear the entry from
-          $scope.title = "";
-          $scope.url = "";
-          $scope.topic = undefined;
-          $scope.addPageForm.$setPristine();
-          $scope.$apply();
+          $scope.$apply(function() {
+            $scope.addPageState = AddPageState.SAVED;
+          });
+
+          // Start timer so user has a chance to read the saved message
+          var promise = new Parse.Promise();
+          $timeout(function() {
+            promise.resolve();
+          }, 500);
+          return promise;
+        }).then(function() {
+          $scope.$apply(function() {
+            // Clear the entry from
+            $scope.title = "";
+            $scope.url = "";
+            $scope.topic = undefined;
+            $scope.addPageForm.$setPristine();
+          });
           $window.history.back();
         }, function(error) {
+          $scope.$apply(function() {
+            $scope.addPageState = AddPageState.SAVE_ERROR;
+          });
+
           // Execute any logic that should take place if the save fails.
           // error is a Parse.Error with an error code and description.
           console.log("Error while saving page:");
           console.log(error);
-          alert('Failed to create new object, with error code: ' + error.message);
         });
     }
   };
@@ -215,22 +244,25 @@ democracyControllers.controller('AddPageController', ['$scope', '$location',
     tag.down = false;
   };
 
-  getTopics = _.once( function() {
+  /**
+   * Retrieve topics from Parse.
+   *
+   * @return Promise that is fulilled when topics are loaded.
+   */
+  var getTopics = function() {
     $scope.topics = [];
     $scope.allTopics = [];
 
     var query = new Parse.Query("Tag");
     query.equalTo("type", "topic");
-    query.find().then(function (topics) {
-      $scope.topics = _.sortBy(topics, function(topic) {
-        return topic.get("name");
+    return query.find().then(function (topics) {
+      $scope.$apply(function() {
+        $scope.topics = _.sortBy(topics, function(topic) {
+          return topic.get("name");
+        });
       });
-
-      $scope.$apply();
-    }, function (error) {
-      alert("Connection to Parse failed, no topics collected.");
     });
-  });
+  }
 
   // Sort list by relevance
   //
@@ -253,7 +285,12 @@ democracyControllers.controller('AddPageController', ['$scope', '$location',
     return tagIdList;
   }
 
-  getTags = _.once(function(urlid) {
+  /**
+   * Retrieve tags from Parse.
+   *
+   * @return Promise when tags are retrieved
+   */
+  var getTags = function(urlid) {
     // We got a url-id through the argument list, look it up in the database
     // and present the associated tags.
     // This became somewhat ugly because Parse.Query.include doesn't work
@@ -262,7 +299,7 @@ democracyControllers.controller('AddPageController', ['$scope', '$location',
     // exceptions when used.
     var tags;
     var urlQuery = new Parse.Query('Url');
-    urlQuery.get(urlid).then(function (urlObject) {
+    return urlQuery.get(urlid).then(function (urlObject) {
       var relevanceTags = urlObject.get('relevanceTags');
       var sortedTags = sortTagsByRelevance(relevanceTags);
 
@@ -281,12 +318,13 @@ democracyControllers.controller('AddPageController', ['$scope', '$location',
 
       // Wait for all fetches to complete, then update $scope.tags
       return Parse.Promise.when(promises);
-    }).then(function (realTags) {
+    }).then(function () {
       $scope.$apply(function() {
         $scope.tags = tags;
       });
+      return Parse.Promise.as();
     });
-  });
+  }
 
   function queryPage() {
     var title = $location.search().title;
@@ -299,9 +337,18 @@ democracyControllers.controller('AddPageController', ['$scope', '$location',
     }
     var urlid = $location.search().urlid;
 
-    if (LoginService.stateLoggedIn == LoginService.LOGGED_IN) {
-      getTags(urlid);
-      getTopics();
+    if (LoginService.stateLoggedIn == LoginService.LOGGED_IN && urlid) {
+      // We can get here several times since we have watchers that will trigger
+      // this function. So we wrap the initialization so we only make queries
+      // to parse once.
+      var init = _.once(function() {
+        Parse.Promise.when([getTags(urlid), getTopics()]).then(function() {
+          $scope.addPageState = AddPageState.WAIT_FOR_USER_INPUT;
+        }, function(error) {
+          $scope.addPageState = AddPageState.LOAD_ERROR;
+        });
+      });
+      init();
     }
   }
 
