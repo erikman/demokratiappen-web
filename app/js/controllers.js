@@ -261,6 +261,7 @@ democracyControllers.controller('AddPageController', ['$scope', '$location',
           return topic.get("name");
         });
       });
+      return Parse.Promise.as();
     });
   }
 
@@ -311,13 +312,7 @@ democracyControllers.controller('AddPageController', ['$scope', '$location',
       tags = filterSortedTags(sortedTags);
 
       // We have our tags, need to do fetch on them to get the names.
-      var promises = [];
-      for (var i = 0; i < allTags.length; i++) {
-        promises[i] = allTags[i].fetch();
-      }
-
-      // Wait for all fetches to complete, then update $scope.tags
-      return Parse.Promise.when(promises);
+      return Parse.Object.fetchAll(allTags);
     }).then(function () {
       $scope.$apply(function() {
         $scope.tags = tags;
@@ -325,6 +320,22 @@ democracyControllers.controller('AddPageController', ['$scope', '$location',
       return Parse.Promise.as();
     });
   }
+
+  // We can get here several times since we have watchers that will trigger
+  // this function. So we wrap the initialization so we only make queries
+  // to parse once.
+  var init = _.once(function(urlid) {
+    Parse.Promise.when([getTags(urlid), getTopics()]).then(function() {
+      $scope.$apply(function() {
+        $scope.addPageState = AddPageState.WAIT_FOR_USER_INPUT;
+      });
+    }, function(error) {
+      console.log('Error loading tags ' + JSON.stringify(error));
+      $scope.$apply(function() {
+        $scope.addPageState = AddPageState.LOAD_ERROR;
+      })
+    });
+  });
 
   function queryPage() {
     var title = $location.search().title;
@@ -338,17 +349,7 @@ democracyControllers.controller('AddPageController', ['$scope', '$location',
     var urlid = $location.search().urlid;
 
     if (LoginService.stateLoggedIn == LoginService.LOGGED_IN && urlid) {
-      // We can get here several times since we have watchers that will trigger
-      // this function. So we wrap the initialization so we only make queries
-      // to parse once.
-      var init = _.once(function() {
-        Parse.Promise.when([getTags(urlid), getTopics()]).then(function() {
-          $scope.addPageState = AddPageState.WAIT_FOR_USER_INPUT;
-        }, function(error) {
-          $scope.addPageState = AddPageState.LOAD_ERROR;
-        });
-      });
-      init();
+     init(urlid);
     }
   }
 
