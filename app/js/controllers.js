@@ -31,7 +31,7 @@ democracyControllers.controller('MainController', [ '$scope', '$location',
 
 
 democracyControllers.controller('LoginController', ['$scope', '$location',
-   'LoginService', function($scope, $location, LoginService) {
+   'LoginService', 'ParseErrorService', function($scope, $location, LoginService, ParseErrorService) {
   $scope.loginService = LoginService;
 
   // The state decides if we shoould show the login or the signup fields. We can
@@ -44,6 +44,8 @@ democracyControllers.controller('LoginController', ['$scope', '$location',
   }
   $scope.state = states;
   $scope.state.currentState = ($location.path() == '/signup') ? states.SIGNUP : states.LOGIN;
+
+  $scope.errorMessage = '';
 
   // When the stateLoggedIn changes we check if we are on one of the dedlicated
   // login pages and if we are then we redirect to the statistics page on a
@@ -58,11 +60,43 @@ democracyControllers.controller('LoginController', ['$scope', '$location',
     }
   });
 
+  $scope.login = function() {
+    LoginService.login().fail(function (error) {
+      $scope.$apply(function() {
+        $scope.errorMessage = ParseErrorService.translateLoginError(error);
+      });
+    });
+  };
+
+  $scope.signup = function() {
+    LoginService.signup().fail(function (error) {
+      $scope.$apply(function() {
+        $scope.errorMessage = ParseErrorService.translateLoginError(error);
+      });
+    });
+  };
+
+  $scope.loginOrSignupFacebook = function() {
+    LoginService.loginOrSignupFacebook().fail(function (error) {
+      $scope.$apply(function() {
+        $scope.errorMessage = ParseErrorService.translateLoginError(error);
+      });
+    });
+  };
+
   $scope.loginAsGuest = function() {
     LoginService.username = 'Sandra';
     LoginService.password = 'guest';
-    LoginService.login();
+    LoginService.login().fail(function (error) {
+      $scope.$apply(function() {
+        $scope.errorMessage = ParseErrorService.translateLoginError(error);
+      });
+    });
   }
+
+  $scope.isUnchanged = function() {
+    return LoginService.username == '' && LoginService.password == '';
+  };
 }]);
 
 
