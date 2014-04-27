@@ -108,8 +108,8 @@ democracyControllers.controller('AddPageController', ['$scope', '$location',
     query.equalTo("user", currentUser);
     query.limit(allTags.length + 1);
 
-    var promise = query.find().then(function(userTags) {
-      var promises = [];
+    return query.find().then(function(userTags) {
+      var tagsToSave = [];
 
       for (var t = 0; t < userTags.length; t++) {
         var userTag = userTags[t];
@@ -121,12 +121,12 @@ democracyControllers.controller('AddPageController', ['$scope', '$location',
 
         // Update the user tag
         if (isPositive) {
-          userTag.set("positiveCount", userTag.get("positiveCount") + 1);
+          userTag.increment("positiveCount");
         }
         if (isNegative) {
-          userTag.set("negativeCount", userTag.get("negativeCount") + 1);
+          userTag.increment("negativeCount");
         }
-        promises.push(userTag.save());
+        tagsToSave[tagsToSave.length] = userTag;
       }
 
       // Create new user tags for the ones not contained in returned set.
@@ -153,12 +153,11 @@ democracyControllers.controller('AddPageController', ['$scope', '$location',
           userTag.set("negativeCount", isPositive ? 0 : 1);
           userTag.set("user", currentUser);
           userTag.setACL(new Parse.ACL(currentUser));
-          promises.push(userTag.save());
+          tagsToSave[tagsToSave.length] = userTag;
         }
       }
-      return Parse.Promise.when(promises);
+      return Parse.Object.saveAll(tagsToSave);
     });
-    return promise;
   }
 
 
