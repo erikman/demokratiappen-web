@@ -211,7 +211,7 @@ democracyServices.factory('ParseErrorService', [ function() {
    * @brief Translate error object to user error description.
    */
   function mapError(error, errorLookup) {
-    var errorMessage;
+    var errorMessage = '';
     if (error && error.code) {
       if (error.code == Parse.Error.AGGREGATE_ERROR) {
         // The error contains multiple error messages. This is typically the
@@ -223,8 +223,7 @@ democracyServices.factory('ParseErrorService', [ function() {
         }
         else {
           // Create map { errorCode: {Parse.Error} }
-          var errorMap = _.indexBy(_.filter(error.errors, _.identity),
-            _.property('code'));
+          var errorMap = _.indexBy(_.filter(error.errors, _.identity), _.property('code'));
           var errorCodes = _.keys(errorMap);
 
           if (errorCodes.length == 1) {
@@ -236,8 +235,7 @@ democracyServices.factory('ParseErrorService', [ function() {
               if (i > 0) {
                 errorMessage += ', ';
               }
-              errorMessage += obj.translateError
-                (errorMap[errorCodes[i]], errorLookup);
+              errorMessage += mapError(errorMap[errorCodes[i]], errorLookup);
             }
           }
         }
@@ -246,7 +244,7 @@ democracyServices.factory('ParseErrorService', [ function() {
         errorMessage = errorLookup(error.code);
         if (!errorMessage) {
           if (error.message) {
-            errorMessage = error.message + ' Felkod: ' + error.code;
+            errorMessage = error.message + ' Error code: ' + error.code;
           }
           else {
             errorMessage = 'Okänt felmeddelande, felkod: ' + error.code + '.';
