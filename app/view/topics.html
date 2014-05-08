@@ -1,0 +1,15 @@
+<div ng-include="'/view/login.html'"></div>
+<div ng-include="'/view/visualization.html'"></div>
+
+<div data-ng-controller="TopicController" data-ng-hide="loginService.stateLoggedIn != loginService.LOGGED_IN" class="panel panel-primary">
+  <div class="panel-heading">Statistik</div>
+  <div class="panel-body">
+    <nvd3-line-chart
+        data="topicData"
+        showXAxis="true"
+        showYAxis="true"
+        tooltips="true"
+        interactive="true">
+    </nvd3-line-chart>
+  </div>
+</div>
