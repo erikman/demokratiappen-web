@@ -18,6 +18,7 @@
 
 var democracyApp = angular.module('democracyApp', [
   'ngRoute',
+  'nvd3ChartDirectives',
   'democracy.controller',
   'democracy.service'
 ]);
@@ -35,6 +36,9 @@ democracyApp.config(['$routeProvider',
       }).
       when('/tagsPerDate', {
         templateUrl: base + '/view/tagsPerDate.html',
+      }).
+      when('/topics', {
+        templateUrl: base + '/view/topics.html',
       }).
       when('/accumulatedTags', {
         templateUrl: base + '/view/accumulatedTags.html',

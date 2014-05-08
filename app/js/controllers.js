@@ -395,7 +395,7 @@ democracyControllers.controller('AddPageController', ['$scope', '$location',
 }]);
 
 
-democracyControllers.controller('TopicController', ['$scope', 'LoginService', 'nvd3ChartDirectives', function($scope, LoginService) {
+democracyControllers.controller('TopicController', ['$scope', 'LoginService', 'nvd3LineChartDirective', function($scope, LoginService) {
   $scope.loginService = LoginService;
 
   $scope.topicData = { };
