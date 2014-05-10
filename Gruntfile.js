@@ -10,7 +10,7 @@ module.exports = function(grunt) {
   grunt.initConfig({
     // Metadata.
     pkg: grunt.file.readJSON('package.json'),
-    appPath: require('./bower.json').appPath || 'app',
+    appPath: grunt.file.readJSON('./bower.json').appPath || 'app',
     distPath: 'dist',
 
     banner: '/*! <%= pkg.title || pkg.name %> - v<%= pkg.version %> - ' +
@@ -23,12 +23,24 @@ module.exports = function(grunt) {
 
     // Watches files for changes and runs tasks based on the changed files
     watch: {
+      bower: {
+        files: ['bower.json'],
+        tasks: ['bowerInstall']
+      },
       js: {
-        files: ['<%= appPath %>/scripts/{,*/}*.js'],
+        files: ['<%= appPath %>/js/{,*/}*.js'],
         tasks: ['newer:jshint:all'],
         options: {
           livereload: true
         }
+      },
+      styles: {
+        files: ['<%= appPath %>/styles/{,*/}*.css'],
+        tasks: ['newer:copy:styles']
+      },
+      compass: {
+        files: ['<%= appPath %>/styles/{,*/}*.{scss,sass}'],
+        tasks: ['compass:server']
       },
       gruntfile: {
         files: ['Gruntfile.js']
@@ -43,30 +55,6 @@ module.exports = function(grunt) {
           '<%= appPath %>/images/{,*/}*.{png,jpg,jpeg,gif,webp,svg}'
         ]
       }
-
-      /*copy: {
-        files: [
-   *///       'app/**/*',
-   //       '!app/js/*',
-   //        '!app/scripts/*'
-   /*     ],
-        tasks: ['copy']
-      },
-      concat: {
-   *///     files: [
-   //       'app/js/**/*.js',
-   //       '!app/js/bookmarklet.js'
-   /*     ],
-        tasks: ['concat']
-      },
-      uglify: {
-        files: [
-   *///       'dist/js/**/*.js',
-   //       '!dist/js/**/*.min.js'
-   /*     ],
-        tasks: ['uglify']
-      }*/
-
     },
 
     // The actual grunt server settings
@@ -86,16 +74,6 @@ module.exports = function(grunt) {
           ]
         }
       },
-      test: {
-        options: {
-          port: 9001,
-          base: [
-            '.tmp',
-            'test',
-            '<%= appPath %>'
-          ]
-        }
-      },
       dist: {
         options: {
           base: '<%= distPath %>'
@@ -103,14 +81,56 @@ module.exports = function(grunt) {
       }
     },
 
+    // Empties folders to start fresh
+    clean: {
+      dist: {
+        src: ['.tmp', '<%= distPath %>']
+      },
+      server: '.tmp'
+    },
+
     // Automatically inject Bower components into the app
-    'bower-install': {
+    bowerInstall: {
       app: {
-        html: '<%= appPath %>/index.html',
+        src: ['<%= appPath %>/index.html'],
         ignorePath: '<%= appPath %>/'
+      },
+      sass: {
+        src: ['<%= appPath %>/styles/{,*/}*.{scss,sass}'],
+        ignorePath: '<%= appPath %>/bower_components/'
       }
     },
 
+    // Compiles Sass to CSS and generates necessary files if requested
+    compass: {
+      options: {
+        sassDir: '<%= appPath %>/styles',
+        cssDir: '.tmp/styles',
+        generatedImagesDir: '.tmp/images/generated',
+        imagesDir: '<%= appPath %>/images',
+        javascriptsDir: '<%= appPath %>/js',
+        fontsDir: '<%= appPath %>/styles/fonts',
+        importPath: '<%= appPath %>/bower_components',
+        httpImagesPath: '/images',
+        httpGeneratedImagesPath: '/images/generated',
+        httpFontsPath: '/styles/fonts',
+        relativeAssets: false,
+        assetCacheBuster: false,
+        raw: 'Sass::Script::Number.precision = 10\n'
+      },
+      dist: {
+        options: {
+          generatedImagesDir: '<%= distPath %>/images/generated'
+        }
+      },
+      server: {
+        options: {
+          debugInfo: true
+        }
+      }
+    },
+
+    // Automatically add javascript references to index.html
     tags: {
       dist: {
         options: {
@@ -137,28 +157,19 @@ module.exports = function(grunt) {
       }
     },
 
-
-    // Allow the use of non-minsafe AngularJS files. Automatically makes it
-    // minsafe compatible so Uglify does not destroy the ng references
-    ngmin: {
-      dist: {
-        files: [{
-          expand: true,
-          cwd: '.tmp/concat/scripts',
-          src: '*.js',
-          dest: '.tmp/concat/scripts'
-        }]
-      }
-    },
-
-    // Replace Google CDN references
+    // Replace servers for script dependencies
     cdnify: {
+     options: {
+        // Use our own cdn database which is a mix of google and cdnjs and
+        // proper support for bootstrap
+        cdn: require('./cdn-data')
+      },
       dist: {
-        html: ['<%= yeoman.dist %>/*.html']
+        html: ['<%= distPath %>/*.html']
       }
     },
 
-    // Copies remaining files to places other tasks can use
+    // Copies remaining (non-script) files to places other tasks can use
     copy: {
       dist: {
         files: [{
@@ -190,12 +201,23 @@ module.exports = function(grunt) {
       }
     },
 
-    clean: {
-      dist: {
-        src: ['<%= distPath %>']
-      },
-      server: '.tmp'
+    // Run some tasks in parallel to speed up the build process
+    concurrent: {
+      server: [
+        'compass:server',
+        'copy:styles'
+      ],
+      test: [
+        'copy:styles',
+        'compass'
+      ],
+      dist: [
+        'copy:styles',
+        'compass:dist',
+      ]
     },
+
+    // Concatenate scripts to a single file
     concat: {
       options: {
         banner: '<%= banner %>',
@@ -209,6 +231,8 @@ module.exports = function(grunt) {
         dest: '<%= distPath %>/js/<%= pkg.name %>.js'
       }
     },
+
+    // Minimize the concatenated script for faster loads
     uglify: {
       options: {
         banner: '<%= banner %>'
@@ -226,39 +250,45 @@ module.exports = function(grunt) {
         dest: 'dist/scripts/Scrape.min.js'
       }
     },
+
+    // Javascript style checker
     jshint: {
       options: {
+        reporter: require('jshint-stylish'),
+        node: true,
+        browser: true,
+        esnext: true,
+        bitwise: true,
+        camelcase: true,
         curly: true,
         eqeqeq: true,
         immed: true,
+        indent: 2,
         latedef: true,
         newcap: true,
         noarg: true,
-        sub: true,
+        quotmark: 'single',
+        regexp: true,
         undef: true,
         unused: true,
-        boss: true,
-        eqnull: true,
-        browser: true,
-        globals: {}
+        strict: true,
+        trailing: true,
+        smarttabs: true,
+        globals: {
+          angular: false,
+          Parse: false,
+          '_': false
+        }
       },
-      gruntfile: {
-        src: 'Gruntfile.js'
-      },
-      lib_test: {
-        src: ['app/**/*.js']
+      all: {
+        src: [
+          'Gruntfile.js',
+          '<%= appPath %>/js/{,*/}*.js',
+          '!<%= appPath %>/js/bookmarklet.js'
+        ]
       }
     },
   });
-
-  // These plugins provide necessary tasks.
-  /*grunt.loadNpmTasks('grunt-contrib-concat');
-  grunt.loadNpmTasks('grunt-contrib-uglify');
-  grunt.loadNpmTasks('grunt-contrib-jshint');
-  grunt.loadNpmTasks('grunt-contrib-watch');
-  grunt.loadNpmTasks('grunt-contrib-clean');
-  grunt.loadNpmTasks('grunt-contrib-copy');
-  grunt.loadNpmTasks('grunt-script-link-tags');*/
 
   grunt.registerTask('serve', function (target) {
     if (target === 'dist') {
@@ -267,43 +297,27 @@ module.exports = function(grunt) {
 
     grunt.task.run([
       'clean:server',
-//      'bower-install',
-//      'concurrent:server',
-//      'autoprefixer',
+      'bowerInstall',
+      'concurrent:server',
       'connect:livereload',
       'watch'
     ]);
   });
 
   grunt.registerTask('build', [
-     'clean',
-     'copy',
-     'concat',
-     'uglify',
-     'tags'
- /*   'clean:dist',
-    'bower-install',
-    'useminPrepare',
+    'clean:dist',
+    'bowerInstall',
     'concurrent:dist',
-    'autoprefixer',
     'concat',
-    'ngmin',
     'copy:dist',
     'cdnify',
-    'cssmin',
     'uglify',
-    'rev',
-    'usemin',
-    'htmlmin'*/
+    'tags'
   ]);
 
   // Default task.
-  grunt.registerTask('default', [ /*'jshint' */ 'build'
-  /*  'clean',
-    'copy',
-    'concat',
-    'uglify',
-    'tags'*/
+  grunt.registerTask('default', [
+    'newer:jshint',
+    'build'
   ]);
-
 };

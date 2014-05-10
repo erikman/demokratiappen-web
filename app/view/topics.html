@@ -1,15 +1,40 @@
 <div ng-include="'/view/login.html'"></div>
 <div ng-include="'/view/visualization.html'"></div>
 
-<div data-ng-controller="TopicController" data-ng-hide="loginService.stateLoggedIn != loginService.LOGGED_IN" class="panel panel-primary">
+<div data-ng-controller="TopicController" class="panel panel-primary">
   <div class="panel-heading">Statistik</div>
   <div class="panel-body">
-    <nvd3-line-chart
-        data="topicData"
-        showXAxis="true"
+    <nvd3-multi-bar-horizontal-chart
+        data="topicData" x="getLabel" y="getValue"
+        margin="{top: 30, right: 20, bottom: 50, left: 175}"
+        showValues="true"
+        showControls="true"
+        showLegend="true"
+        showTooltips="true"
         showYAxis="true"
-        tooltips="true"
-        interactive="true">
-    </nvd3-line-chart>
+        showXAxis="true"
+        stacked="true"
+        transitionDuration="350"
+        height="300">
+    </nvd3-multi-bar-horizontal-chart>
+  </div>
+</div>
+
+<div data-ng-controller="PartyController" class="panel panel-primary">
+  <div class="panel-heading">Statistik</div>
+  <div class="panel-body">
+    <nvd3-multi-bar-horizontal-chart
+        data="topicData" x="getLabel" y="getValue"
+        margin="{top: 30, right: 20, bottom: 50, left: 175}"
+        showValues="true"
+        showControls="true"
+        showLegend="true"
+        showTooltips="true"
+        showYAxis="true"
+        showXAxis="true"
+        stacked="true"
+        transitionDuration="350"
+        height="300">
+    </nvd3-multi-bar-horizontal-chart>
   </div>
 </div>

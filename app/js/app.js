@@ -16,6 +16,9 @@
  * along with Demokratiappen.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+(function() {
+'use strict';
+
 var democracyApp = angular.module('democracyApp', [
   'ngRoute',
   'nvd3ChartDirectives',
@@ -26,7 +29,7 @@ var democracyApp = angular.module('democracyApp', [
 
 democracyApp.config(['$routeProvider',
   function($routeProvider) {
-    var base = ''
+    var base = '';
     $routeProvider.
       when('/addPage', {
         templateUrl: base + '/view/addPage.html',
@@ -59,3 +62,4 @@ democracyApp.config(['$routeProvider',
         redirectTo: '/login'
       });
   }]);
+}());

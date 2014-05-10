@@ -1,8 +1,8 @@
-!function() {
+var dp = (function() {
   'use strict';
 
   var dp = {
-    version: "0.0.0"
+    version: '0.0.0'
   };
 
 /**
@@ -17,22 +17,42 @@
  * e.addTag({type: 'Person', name: 'Stefan Löfgren', score: -1});
  * @endcode
  */
-dp.Event = function() {
-  this.types = {};
+dp.Event = function(types) {
+  this.types = types || {};
 };
 
 
 dp.Event.prototype.addTag = function(tag) {
   var types = this.types[tag.type];
   if (!types) {
-    types = [];
-    this.types = types;
+    types = {};
+    this.types[tag.type] = types;
   }
 
   types[tag.name] = {
     score: tag.score
   };
-}
+};
+
+/**
+ * @brief Calculate mean score form the tags
+ */
+dp.Event.prototype.meanScore = function() {
+  var scoreSum = 0;
+  var scoreCount = 0;
+  for (var typeKey in this.types) {
+    var tagTypes = this.types[typeKey];
+    for (var tagKey in tagTypes) {
+      var tag = tagTypes[tagKey];
+      if (tag.score) {
+        scoreSum += tag.score;
+        scoreCount += 1;
+      }
+    }
+  }
+
+  return (scoreCount > 0) ? scoreSum / scoreCount : 0;
+};
 
 
 /**
@@ -40,7 +60,7 @@ dp.Event.prototype.addTag = function(tag) {
  */
 dp.Event.prototype.keys = function() {
   return ['Political Party', 'Topic', 'Person', 'Organization', 'Location'];
-}
+};
 
 
 /**
@@ -51,7 +71,8 @@ var EventFilterOP = {};
 EventFilterOP.Equals = function(type, value) {
   this.type = type;
   this.value = value;
-}
+};
+
 EventFilterOP.Equals.prototype.filter = function(object) {
   var types = object.types[this.type];
   var value;
@@ -59,7 +80,7 @@ EventFilterOP.Equals.prototype.filter = function(object) {
     value = types[this.value];
   }
   return !!value;
-}
+};
 
 
 /**
@@ -70,17 +91,19 @@ EventFilterOP.Equals.prototype.filter = function(object) {
  */
 dp.EventFilter = function() {
   this.filters = [];
-}
+};
+
 dp.EventFilter.prototype.equalTo = function(type, value) {
-  this.filters[this.filters.length] = new FilterOP.Equals(type, value);
-}
+  this.filters[this.filters.length] = new EventFilterOP.Equals(type, value);
+};
+
 dp.EventFilter.prototype.filter = function(object) {
   var result = true;
   for (var i = 0; result && (i < this.filters.length); i++) {
-    result &= this.filters[i].filter(object);
+    result = result && this.filters[i].filter(object);
   }
   return result;
-}
+};
 
 
 /**
@@ -88,7 +111,7 @@ dp.EventFilter.prototype.filter = function(object) {
  */
 var TypeProjection = function(type) {
   this.type = type;
-}
+};
 
 
 /**
@@ -99,12 +122,12 @@ var TypeProjection = function(type) {
 TypeProjection.prototype.map = function(object) {
   // Check for direct result of this event
   var results = [];
-  var typeTags = object.tags[this.type];
+  var typeTags = object.types[this.type];
   if (typeTags) {
     for (var key in typeTags) {
       var score = typeTags[key].score;
       if (!score) {
-        score = object.score;
+        score = object.meanScore();
       }
 
       results[results.length] = {
@@ -116,16 +139,16 @@ TypeProjection.prototype.map = function(object) {
     }
   }
 
-  // TODO: If no direct results are found, try to map the object onto the main axis.
+  // TODO: If no direct results are found, try to map the object onto the axis.
   return results;
-}
+};
 
 
 // Distance 0 == very important
 TypeProjection.distanceToImportance = function(x) {
   var sigma = 1.0; // How to find distance form the graph?
   return Math.exp((x * x) / (2.0 * sigma * sigma));
-}
+};
 
 
 /**
@@ -134,7 +157,7 @@ TypeProjection.distanceToImportance = function(x) {
 dp.Database = function(events) {
   this.events = events;
   this.filter = null;
-}
+};
 
 
 /**
@@ -149,11 +172,11 @@ dp.Database = function(events) {
  */
 dp.Database.prototype.setFilter = function(filter) {
   this.filter = filter;
-}
+};
 
-dp.Database.prototype.getFilter = function(filter) {
+dp.Database.prototype.getFilter = function() {
   return this.filter;
-}
+};
 
 
 /**
@@ -169,32 +192,37 @@ dp.Database.prototype.getFilter = function(filter) {
  * @endcode
  */
 dp.Database.prototype.histogramBy = function(mainAxis) {
+  var result = {};
+
   // Get the projections
-  var mainProjection = new dp.TypeProjection(mainAxis);
+  var mainProjection = new TypeProjection(mainAxis);
 
   // Iterate over the events and project on the axis
-  for (var i = 0; i < events.length; i++) {
-    var e = events[i];
-    if (this.filter == null || this.filter.filter(e)) {
+  for (var i = 0; i < this.events.length; i++) {
+    var e = this.events[i];
+    if (!this.filter || this.filter.filter(e)) {
       // This event should be included, project it onto the main and secondary
       // axis.
       var main = mainProjection.map(e);
       if (main) {
         for (var j = 0; j < main.length; j++) {
+          var projectedEvent = main[j];
+
           // Add a result entry
-          var prevHistogramMap = result[main.name];
-          if (!prevHistogramArray) {
-            prevHistogramMap = {negative: 0, positive: 0};
-            result[main.name] = prevHistogramMap;
+          var prevHistogramMap = result[projectedEvent.name];
+          if (!prevHistogramMap) {
+            prevHistogramMap = {negative: 0, positive: 0, count: 0};
+            result[projectedEvent.name] = prevHistogramMap;
           }
 
-          var importance = TypeProjection.distanceToImportance(main.distance);
+          var importance =
+            TypeProjection.distanceToImportance(projectedEvent.distance);
           prevHistogramMap.count += importance;
-          if (main.score < 0) {
-            prevHistogramMap.negative += -main.score * importance;
+          if (projectedEvent.score < 0) {
+            prevHistogramMap.negative += projectedEvent.score * importance;
           }
-          else if (main.score > 0) {
-            prevHistogramMap.positive += main.score * importance;
+          else if (projectedEvent.score > 0) {
+            prevHistogramMap.positive += projectedEvent.score * importance;
           }
         }
       }
@@ -202,7 +230,7 @@ dp.Database.prototype.histogramBy = function(mainAxis) {
   }
 
   return result;
-}
+};
 
 
 /**
@@ -225,9 +253,9 @@ dp.Database.prototype.projectionBy = function(mainAxis, secondaryAxis) {
   var secondaryProjection = new TypeProjection(secondaryAxis);
 
   // Iterate over the events and project on the axis
-  for (var i = 0; i < events.length; i++) {
-    var e = events[i];
-    if (this.filter == null || this.filter.filter(e)) {
+  for (var i = 0; i < this.events.length; i++) {
+    var e = this.events[i];
+    if (!this.filter || this.filter.filter(e)) {
       // This event should be included, project it onto the main and secondary
       // axis.
       var main = mainProjection.map(e);
@@ -236,25 +264,27 @@ dp.Database.prototype.projectionBy = function(mainAxis, secondaryAxis) {
         // TODO: Form the different tag combinations
 
         // Combine the distances
-        var d = Math.sqrt(main.distance * main.distance
-                          + second.distance * second.distance);
+        var d = Math.sqrt(main.distance * main.distance +
+                          second.distance * second.distance);
 
         // Add a result entry
         var prevHistogramMap = result[main.name];
-        if (!prevHistogramArray) {
+        if (!prevHistogramMap) {
           prevHistogramMap = {};
           result[main.name] = prevHistogramMap;
         }
         var prevHistogramValue = prevHistogramMap[second.name];
-        if (!prevHistogramValue) prevHistogramValue = 0;
-        prevHistogramMap[second.name] = prevHistogramValue
-          + e.score * Projection.distanceToImportance(d);
+        if (!prevHistogramValue) {
+          prevHistogramValue = 0;
+        }
+        prevHistogramMap[second.name] = prevHistogramValue +
+          e.score * TypeProjection.distanceToImportance(d);
       }
     }
   }
 
   return result;
-}
+};
 
 
 /**
@@ -272,15 +302,15 @@ dp.Database.prototype.timelineBy = function(mainAxis) {
   var result = {};
 
   // Get the projections
-  var projection = new Projection(mainAxis);
+  var projection = new TypeProjection(mainAxis);
 
   // Iterate over the events and project on the axis
-  for (var i = 0; i < events.length; i++) {
-    var e = events[i];
-    if (this.filter == null || this.filter.filter(e)) {
+  for (var i = 0; i < this.events.length; i++) {
+    var e = this.events[i];
+    if (!this.filter || this.filter.filter(e)) {
       // This event should be included, project it onto the main and secondary
       // axis.
-      var main = mainProjection.map(e);
+      var main = projection.map(e);
       if (main) {
         // Add a result entries
         for (var j = 0; j < main.length; j++) {
@@ -294,7 +324,8 @@ dp.Database.prototype.timelineBy = function(mainAxis) {
             date: e.createdA,
             type: mainAxis,
             name: main[j].name,
-            importance: main[j].score * Projection.distanceToImportance(main[j].distance)
+            importance: main[j].score *
+              TypeProjection.distanceToImportance(main[j].distance)
           };
         }
       }
@@ -303,13 +334,14 @@ dp.Database.prototype.timelineBy = function(mainAxis) {
 
   // TODO: Sort the timelines
   return result;
-}
+};
 
-  if (typeof define === "function" && define.amd) {
+  if (typeof define === 'function' && define.amd) {
     define(dp);
-  } else if (typeof module === "object" && module.exports) {
+  } else if (typeof module === 'object' && module.exports) {
     module.exports = dp;
   } else if (this) {
     this.dp = dp;
   }
-}();
+  return dp;
+}());

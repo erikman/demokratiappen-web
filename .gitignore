@@ -1,6 +1,9 @@
+/app/bower_components
 /app/js/initialize_parse.js
 /node_modules/*
 /dist/*
+/.tmp
+/.sass-cache
 .DS_Store
 *.swp
 *~

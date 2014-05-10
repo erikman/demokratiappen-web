@@ -16,13 +16,16 @@
  * along with Demokratiappen.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+(function() {
+  'use strict';
+
 var democracyServices = angular.module('democracy.service', [] );
 
 democracyServices.factory('ParseInitializer', [ function() {
-  init_demokratiappen();
+  initDemokratiappen();
 }]);
 
-democracyServices.factory('LoginService', [ '$rootScope', 'ParseInitializer', function($rootScope, ParseInitializer) {
+democracyServices.factory('LoginService', [ '$rootScope', 'ParseInitializer', function($rootScope) {
   var obj = {
     LOGGED_IN: 0,
     NOT_LOGGED_IN: 1,
@@ -78,7 +81,7 @@ democracyServices.factory('LoginService', [ '$rootScope', 'ParseInitializer', fu
   obj.loginOrSignupFacebook = function() {
     var loginPromise = new Parse.Promise();
 
-    Parse.FacebookUtils.logIn("email", {
+    Parse.FacebookUtils.logIn('email', {
       success: function(user) {
         if (!user.existed()) {
           // User did not exist before, update the ACL on the newly created
@@ -126,12 +129,12 @@ democracyServices.factory('LoginService', [ '$rootScope', 'ParseInitializer', fu
 
     var signupPromise = new Parse.Promise();
     var newUser = new Parse.User();
-    newUser.set("username", obj.username);
-    newUser.set("password", obj.password);
+    newUser.set('username', obj.username);
+    newUser.set('password', obj.password);
 
     if (obj.email && (obj.email.length > 0)) {
       // Only set email if one is provided, otherwise the signup will fail.
-      newUser.set("email", obj.email);
+      newUser.set('email', obj.email);
     }
 
     newUser.signUp(
@@ -213,7 +216,7 @@ democracyServices.factory('ParseErrorService', [ function() {
   function mapError(error, errorLookup) {
     var errorMessage = '';
     if (error && error.code) {
-      if (error.code == Parse.Error.AGGREGATE_ERROR) {
+      if (error.code === Parse.Error.AGGREGATE_ERROR) {
         // The error contains multiple error messages. This is typically the
         // result of a Parse.Promise.when([array]) request. In many cases all
         // the returned errors contain the same result, so get the uniqe error
@@ -276,3 +279,50 @@ democracyServices.factory('ParseErrorService', [ function() {
   return obj;
 }]);
 
+/**
+ * @brief Service to translate error codes from Parse to the application
+ *   language.
+ *
+ * Currently only swedish is supported.
+ */
+democracyServices.factory('DataProjectionService', [ function() {
+  var service = {};
+
+  // Setup projection database
+  var events = [];
+  var e;
+
+  e = new dp.Event();
+  e.addTag({type: 'Topic', name: 'Skatt'}); // Note no score
+  e.addTag({type: 'Political Party', name: 'Socialdemokraterna', score: 1});
+  e.addTag({type: 'Political Party', name: 'Vänsterpartiet', score: 1});
+  e.addTag({type: 'Person', name: 'Stefan Löfgren', score: -1});
+  events[events.length] = e;
+
+  e = new dp.Event();
+  e.addTag({type: 'Topic', name: 'Skatt'}); // Note no score
+  e.addTag({type: 'Political Party', name: 'Socialdemokraterna', score: -1});
+  e.addTag({type: 'Political Party', name: 'Vänsterpartiet', score: 1});
+  e.addTag({type: 'Person', name: 'Göran Persson', score: 1});
+  events[events.length] = e;
+
+  e = new dp.Event();
+  e.addTag({type: 'Topic', name: 'Sjukvård'}); // Note no score
+  e.addTag({type: 'Political Party', name: 'Moderaterna', score: -1});
+  e.addTag({type: 'Political Party', name: 'Vänsterpartiet', score: 1});
+  e.addTag({type: 'Person', name: 'Fredrik Reinfeldt', score: -1});
+  events[events.length] = e;
+
+  e = new dp.Event();
+  e.addTag({type: 'Topic', name: 'Sjukvård'}); // Note no score
+  e.addTag({type: 'Political Party', name: 'Socialdemokraterna', score: -1});
+  e.addTag({type: 'Political Party', name: 'Vänsterpartiet', score: 1});
+  e.addTag({type: 'Person', name: 'Göran Persson', score: 1});
+  events[events.length] = e;
+
+
+  service.db = new dp.Database(events);
+  return service;
+}]);
+
+}());
