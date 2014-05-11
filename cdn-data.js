@@ -1,6 +1,6 @@
 'use strict';
 
-var minify = false;
+var minify = true;
 
 // Google exports
 var data = module.exports = {
@@ -91,7 +91,7 @@ var cdnjs = [
   },
   {
     name: 'underscore',
-    cdnjsName: 'underscore',
+    cdnjsName: 'underscore.js',
     filename: 'underscore.js',
     filenameMin: 'underscore-min.js',
     versions: ['1.6.0']
@@ -108,3 +108,26 @@ cdnjs.forEach(function (item) {
     }
   };
 });
+
+// jsdelivr.com
+var jsdelivr = [
+  {
+    name: 'angularjs-nvd3-directives',
+    cdnjsName: 'angularjs.nvd3-directives',
+    filename: 'angularjs-nvd3-directives.js',
+    filenameMin: 'angularjs-nvd3-directives.min.js',
+    versions: ['0.0.7']
+  }
+];
+
+jsdelivr.forEach(function (item) {
+  data[item.name] = {
+    versions: item.versions,
+    url: function (version) {
+      var filename = minify ? item.filenameMin : item.filename;
+      return ['//cdn.jsdelivr.net/', item.cdnjsName, 'v' + version,
+        filename].join('/');
+    }
+  };
+});
+

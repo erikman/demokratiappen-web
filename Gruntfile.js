@@ -178,8 +178,9 @@ module.exports = function(grunt) {
             '.htaccess',
             '*.html',
             'js/bookmarklet.js',
-            'views/{,*/}*.html',
-            'bower_components/**/*',
+            'view/{,*/}*.html',
+            'bower_components/bootstrap/dist/*',
+            'bower_components/nvd3/*.css',
             'images/{,*/}*.{webp}',
             'fonts/*'
           ]
@@ -198,6 +199,25 @@ module.exports = function(grunt) {
       }
     },
 
+    // Minify html source (makes it easier to copy into wordpress page)
+    htmlmin: {
+      options: {
+        removeComments: true,
+        collapseWhitespace: true,
+        collapseBooleanAttributes: true,
+        removeCommentsFromCDATA: true,
+        removeOptionalTags: true
+      },
+      dist: {
+        files: [{
+          expand: true,
+          cwd: '<%= distPath %>',
+          src: ['*.html'],
+          dest: '<%= distPath %>'
+        }]
+      }
+    },
+
     // Run some tasks in parallel to speed up the build process
     concurrent: {
       server: [
@@ -209,6 +229,20 @@ module.exports = function(grunt) {
       dist: [
         'copy:styles'
       ]
+    },
+
+    cssmin: {
+      options: {
+        banner: '<%= banner %>',
+      },
+      dist: {
+        files: {
+          '<%= distPath %>/styles/demokratiappen.css': [
+            '.tmp/styles/{,*/}*.css',
+            '<%= appPath %>/styles/{,*/}*.css'
+          ]
+        }
+      }
     },
 
     // Concatenate scripts to a single file
@@ -310,8 +344,10 @@ module.exports = function(grunt) {
     'concat',
     'copy:dist',
     'cdnify',
+    'cssmin',
     'uglify',
-    'tags'
+    'tags',
+    'htmlmin'
   ]);
 
   // Default task.
