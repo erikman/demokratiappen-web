@@ -274,9 +274,9 @@ module.exports = function(grunt) {
         scripturl: true,
         globals: {
           angular: false,
+          define: true,
           Parse: false,
           '_': false,
-          initDemokratiappen: false
         }
       },
       all: {

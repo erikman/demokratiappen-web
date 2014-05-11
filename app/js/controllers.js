@@ -57,7 +57,7 @@
     }, function() {
       if (LoginService.stateLoggedIn === LoginService.LOGGED_IN) {
         if (($location.path() === '/login') || ($location.path() === '/signup')) {
-          $location.path('/listTags');
+          $location.path('/dashboard');
         }
       }
     });
@@ -194,7 +194,6 @@
         return Parse.Object.saveAll(tagsToSave);
       });
     }
-
 
     $scope.post = function () {
       if (($scope.title.length > 0) && ($scope.url.length > 0)) {
@@ -393,6 +392,60 @@
     $scope.$watch(function() {
       return LoginService.stateLoggedIn;
     }, queryPage);
+  }]);
+
+
+  democracyControllers.controller('TopicController', ['$scope', 'LoginService', 'DataProjectionService', 'nvd3MultiBarHorizontalChartDirective', function($scope, LoginService, DataProjectionService) {
+    $scope.loginService = LoginService;
+    $scope.dataProjectionService = DataProjectionService;
+
+    $scope.topicData = [ ];
+    function updateScopeTopicData() {
+      var data = DataProjectionService.db.histogramBy('topic');
+      $scope.topicData = DataProjectionService.histogramToD3Series(data, ['positive', 'negative']);
+    }
+
+    // Helper functions for extracting data for D3 from our structs
+    $scope.getLabel = function(d) {
+      return d.label;
+    };
+    $scope.getValue = function(d) {
+      return d.value;
+    };
+
+    $scope.$watch(function() {
+      return LoginService.stateLoggedIn;
+    }, DataProjectionService.updateData);
+    $scope.$watch(function() {
+      return DataProjectionService.db;
+    }, updateScopeTopicData);
+
+  }]);
+
+
+  democracyControllers.controller('PartyController', ['$scope', 'LoginService', 'DataProjectionService', 'nvd3MultiBarHorizontalChartDirective', function($scope, LoginService, DataProjectionService) {
+    $scope.loginService = LoginService;
+    $scope.dataProjectionService = DataProjectionService;
+
+    $scope.topicData = [ ];
+    function updateScopeTopicData() {
+      var data = DataProjectionService.db.histogramBy('organization');
+      $scope.topicData = DataProjectionService.histogramToD3Series(data, ['positive', 'negative']);
+    }
+
+    $scope.getLabel = function(d) {
+      return d.label;
+    };
+    $scope.getValue = function(d) {
+      return d.value;
+    };
+
+    $scope.$watch(function() {
+      return LoginService.stateLoggedIn;
+    }, DataProjectionService.updateData);
+    $scope.$watch(function() {
+      return DataProjectionService.db;
+    }, updateScopeTopicData);
   }]);
 
 

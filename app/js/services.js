@@ -16,6 +16,10 @@
  * along with Demokratiappen.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+// Some jshint configuration
+/* global dp */
+/* global initDemokratiappen */
+
 (function() {
   'use strict';
 
@@ -179,7 +183,6 @@
     return obj;
   }]);
 
-
   /**
    * @brief Service to translate error codes from Parse to the application
    *   language.
@@ -279,5 +282,118 @@
     };
 
     return obj;
+  }]);
+
+  democracyServices.factory('DataProjectionService',
+      ['$rootScope', 'LoginService', function($rootScope, LoginService) {
+    var service = {};
+
+    service.db = new dp.Database();
+
+    // Convert parse tag to event tag
+    function parseTagToEventTag(tag, score) {
+      return {
+        type: tag.get('type'),
+        name: tag.get('name'),
+        score: score
+      };
+    }
+
+    // Convert data from db.histogram to something D3 understands
+    service.histogramToD3Series = function(data, axis) {
+      var result = {};
+      for (var key in data) {
+        var values = data[key];
+        for (var axisId = 0; axisId < axis.length; axisId++) {
+          var key2 = axis[axisId];
+          var resultValues = result[key2];
+          if (!resultValues) {
+            resultValues = {
+              key: key2,
+              values: []
+            };
+            result[key2] = resultValues;
+          }
+
+          resultValues.values[resultValues.values.length] = {
+            label: key,
+            value: values[key2]
+          };
+        }
+      }
+
+      // Convert the outermost object to an array
+      var resultArray = [];
+      for (key in result) {
+        resultArray[resultArray.length] = result[key];
+      }
+
+      return resultArray;
+    };
+
+    function updateData() {
+      if (LoginService.stateLoggedIn === LoginService.LOGGED_IN) {
+        var currentUser = Parse.User.current();
+
+        // Setup query for fetching user data
+        var Page = Parse.Object.extend('Page');
+        var pages = new Parse.Query(Page);
+        pages.include('positive_tags');
+        pages.include('negative_tags');
+        pages.include('topic');
+        pages.equalTo('user', currentUser);
+
+        pages.find().then(function(pages) {
+          var events = [];
+
+          // Create events from the returned pages
+          for (var pageId = 0; pageId < pages.length; pageId++) {
+            var page = pages[pageId];
+            var e = new dp.Event();
+
+            // Add topic
+            var topic = page.get('topic');
+            if (topic) {
+              e.addTag(parseTagToEventTag(topic));
+            }
+
+            // Add positive tags
+            var tagId;
+            var positiveTags = page.get('positive_tags');
+            if (positiveTags) {
+              for (tagId = 0; tagId < positiveTags.length; tagId++) {
+                var positiveTag = positiveTags[tagId];
+                if (positiveTag) {
+                  e.addTag(parseTagToEventTag(positiveTag, 1));
+                }
+              }
+            }
+
+            // Add negative tags
+            var negativeTags = page.get('negative_tags');
+            if (negativeTags) {
+              for (tagId = 0; tagId < negativeTags.length; tagId++) {
+                var negativeTag = negativeTags[tagId];
+                if (negativeTag) {
+                  e.addTag(parseTagToEventTag(negativeTag, -1));
+                }
+              }
+            }
+
+            // Save the event
+            events[events.length] = e;
+          }
+
+          // Update the database
+          $rootScope.$apply(function() {
+            service.db = new dp.Database(events);
+          });
+        });
+      }
+    }
+    // Coalesce update data requests when we get them from multiple controls
+    service.updateData = _.debounce(updateData, 300, true);
+
+    return service;
   }]);
 }());
