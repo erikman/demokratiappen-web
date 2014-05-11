@@ -45,8 +45,8 @@
       when('/listCollections', {
         templateUrl: '/view/listCollections.html',
       }).
-      when('/statistics', {
-        templateUrl: base + '/view/statistics.html',
+      when('/listTags', {
+        templateUrl: base + '/view/listTags.html',
       }).
       when('/login', {
         templateUrl: base + '/view/login.html',

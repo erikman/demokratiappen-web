@@ -57,7 +57,7 @@
     }, function() {
       if (LoginService.stateLoggedIn === LoginService.LOGGED_IN) {
         if (($location.path() === '/login') || ($location.path() === '/signup')) {
-          $location.path('/statistics');
+          $location.path('/listTags');
         }
       }
     });
@@ -452,7 +452,7 @@
   }]);
 
 
-  democracyControllers.controller('StatisticsController', ['$scope', 'LoginService', function($scope, LoginService) {
+  democracyControllers.controller('ListTagsController', ['$scope', 'LoginService', function($scope, LoginService) {
     $scope.loginService = LoginService;
     $scope.tags = [];
     $scope.tagCount = 0;
@@ -491,6 +491,7 @@
       return LoginService.stateLoggedIn;
     }, queryPage);
   }]);
+
 
   democracyControllers.controller('TagsPerDateController', ['$scope', 'LoginService', function($scope, LoginService) {
 
