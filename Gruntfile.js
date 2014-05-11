@@ -179,8 +179,8 @@ module.exports = function(grunt) {
             '*.html',
             'js/bookmarklet.js',
             'view/{,*/}*.html',
-            'bower_components/bootstrap/dist/*',
-            'bower_components/nvd3/*.css',
+            'bower_components/bootstrap/dist/{,*/}*.css',
+            'bower_components/nvd3/src/*.css',
             'images/{,*/}*.{webp}',
             'fonts/*'
           ]
@@ -212,7 +212,7 @@ module.exports = function(grunt) {
         files: [{
           expand: true,
           cwd: '<%= distPath %>',
-          src: ['*.html'],
+          src: ['*.html', 'view/{,*/}*.html'],
           dest: '<%= distPath %>'
         }]
       }
