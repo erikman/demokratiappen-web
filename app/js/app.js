@@ -17,18 +17,18 @@
  */
 
 (function() {
-'use strict';
+  'use strict';
 
-var democracyApp = angular.module('democracyApp', [
-  'ngRoute',
-  'nvd3ChartDirectives',
-  'democracy.controller',
-  'democracy.service'
-]);
+  var democracyApp = angular.module('democracyApp', [
+    'ngRoute',
+    'nvd3ChartDirectives',
+    'democracy.controller',
+    'democracy.service'
+  ]);
 
 
-democracyApp.config(['$routeProvider',
-  function($routeProvider) {
+  democracyApp.config(['$routeProvider',
+      function($routeProvider) {
     var base = '';
     $routeProvider.
       when('/addPage', {

@@ -1,8 +1,8 @@
 <div ng-include="'/view/login.html'"></div>
 <div ng-include="'/view/visualization.html'"></div>
 
-<div data-ng-controller="TopicController" class="panel panel-primary">
-  <div class="panel-heading">Statistik</div>
+<div data-ng-controller="TopicController" data-ng-hide="loginService.stateLoggedIn !== loginService.LOGGED_IN"  class="panel panel-primary">
+  <div class="panel-heading">Ämnen</div>
   <div class="panel-body">
     <nvd3-multi-bar-horizontal-chart
         data="topicData" x="getLabel" y="getValue"
@@ -20,8 +20,8 @@
   </div>
 </div>
 
-<div data-ng-controller="PartyController" class="panel panel-primary">
-  <div class="panel-heading">Statistik</div>
+<div data-ng-controller="PartyController" data-ng-hide="loginService.stateLoggedIn !== loginService.LOGGED_IN" class="panel panel-primary">
+  <div class="panel-heading">Organisationer</div>
   <div class="panel-body">
     <nvd3-multi-bar-horizontal-chart
         data="topicData" x="getLabel" y="getValue"

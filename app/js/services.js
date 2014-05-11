@@ -19,52 +19,101 @@
 (function() {
   'use strict';
 
-var democracyServices = angular.module('democracy.service', [] );
+  var democracyServices = angular.module('democracy.service', [] );
 
-democracyServices.factory('ParseInitializer', [ function() {
-  initDemokratiappen();
-}]);
+  democracyServices.factory('ParseInitializer', [ function() {
+    initDemokratiappen();
+  }]);
 
-democracyServices.factory('LoginService', [ '$rootScope', 'ParseInitializer', function($rootScope) {
-  var obj = {
-    LOGGED_IN: 0,
-    NOT_LOGGED_IN: 1,
-    INITIAL: 0,
-    LOADING: 1,
-    LOGIN_FAILED: 2,
-    REGISTRATION_FAILED: 3
-  };
+  democracyServices.factory('LoginService',
+     ['$rootScope', 'ParseInitializer',
+      function($rootScope) {
+    var obj = {
+      LOGGED_IN: 0,
+      NOT_LOGGED_IN: 1,
+      INITIAL: 0,
+      LOADING: 1,
+      LOGIN_FAILED: 2,
+      REGISTRATION_FAILED: 3
+    };
 
-  obj.stateLoggedIn = (Parse.User.current() ? obj.LOGGED_IN : obj.NOT_LOGGED_IN);
-  obj.stateLoginProcess = obj.INITIAL;
+    obj.stateLoggedIn = (Parse.User.current() ? obj.LOGGED_IN : obj.NOT_LOGGED_IN);
+    obj.stateLoginProcess = obj.INITIAL;
 
-  var setStateLoginProcess = function(newState) {
-    obj.stateLoginProcess = newState;
-  };
+    var setStateLoginProcess = function(newState) {
+      obj.stateLoginProcess = newState;
+    };
 
-  var setStateLoggedIn = function(newState) {
-    obj.stateLoggedIn = newState;
+    var setStateLoggedIn = function(newState) {
+      obj.stateLoggedIn = newState;
 
-    obj.password = '';
-    obj.email = '';
-    setStateLoginProcess(obj.INITIAL);
-  };
+      obj.password = '';
+      obj.email = '';
+      setStateLoginProcess(obj.INITIAL);
+    };
 
-  obj.login = function() {
-    setStateLoginProcess(obj.LOADING);
+    obj.login = function() {
+      setStateLoginProcess(obj.LOADING);
 
-    var loginPromise = new Parse.Promise();
-    Parse.User.logIn(
-      obj.username,
-      obj.password,
-      {
+      var loginPromise = new Parse.Promise();
+      Parse.User.logIn(
+        obj.username,
+        obj.password,
+        {
+          success: function(user) {
+            $rootScope.$apply(function() {
+              setStateLoggedIn(obj.LOGGED_IN);
+            });
+            loginPromise.resolve(user);
+          },
+          error: function(user, error) {
+            _.defer(function () {
+              $rootScope.$apply(function() {
+                setStateLoginProcess(obj.LOGIN_FAILED);
+              });
+              // Run the callback outside of angular scope updates.
+              loginPromise.reject(error);
+            });
+          }
+        });
+
+       return loginPromise;
+    };
+
+    obj.loginOrSignupFacebook = function() {
+      var loginPromise = new Parse.Promise();
+
+      Parse.FacebookUtils.logIn('email', {
         success: function(user) {
-          $rootScope.$apply(function() {
-            setStateLoggedIn(obj.LOGGED_IN);
-          });
-          loginPromise.resolve(user);
+          if (!user.existed()) {
+            // User did not exist before, update the ACL on the newly created
+            // user object.
+            user.setACL(new Parse.ACL());
+            user.save().then(function () {
+              $rootScope.$apply(function() {
+                setStateLoggedIn(obj.LOGGED_IN);
+              });
+              loginPromise.resolve(user);
+            }, function (error) {
+              _.defer(function () {
+                $rootScope.$apply(function() {
+                  setStateLoginProcess(obj.LOGIN_FAILED);
+                });
+                // Run the callback outside of angular scope updates.
+                loginPromise.reject(error);
+              });
+            });
+          }
+          else {
+            $rootScope.$apply(function() {
+              setStateLoggedIn(obj.LOGGED_IN);
+            });
+            loginPromise.resolve(user);
+          }
         },
         error: function(user, error) {
+          // Some error checking is done on the client side, so we need to defer
+          // execution here so we don't nestle the angular apply calls.
           _.defer(function () {
             $rootScope.$apply(function() {
               setStateLoginProcess(obj.LOGIN_FAILED);
@@ -74,255 +123,277 @@ democracyServices.factory('LoginService', [ '$rootScope', 'ParseInitializer', fu
           });
         }
       });
+      return loginPromise;
+    };
 
-     return loginPromise;
-  };
+    obj.signup = function() {
+      setStateLoginProcess(obj.LOADING);
 
-  obj.loginOrSignupFacebook = function() {
-    var loginPromise = new Parse.Promise();
+      var signupPromise = new Parse.Promise();
+      var newUser = new Parse.User();
+      newUser.set('username', obj.username);
+      newUser.set('password', obj.password);
 
-    Parse.FacebookUtils.logIn('email', {
-      success: function(user) {
-        if (!user.existed()) {
-          // User did not exist before, update the ACL on the newly created
-          // user object.
-          user.setACL(new Parse.ACL());
-          user.save().then(function () {
-            $rootScope.$apply(function() {
+      if (obj.email && (obj.email.length > 0)) {
+        // Only set email if one is provided, otherwise the signup will fail.
+        newUser.set('email', obj.email);
+      }
+
+      newUser.signUp(
+        { ACL: new Parse.ACL() },
+        {
+          success: function(user) {
+            $rootScope.$apply(function () {
+              obj.username = user.getUsername();
               setStateLoggedIn(obj.LOGGED_IN);
             });
-            loginPromise.resolve(user);
-          }, function (error) {
+            signupPromise.resolve(user);
+          },
+          error: function(user, error) {
+            // Some error checking is done on the client side, for instance if
+            // the user name is empty, so we need to defer execution here so we
+            // don't nestle the angular apply calls.
             _.defer(function () {
               $rootScope.$apply(function() {
-                setStateLoginProcess(obj.LOGIN_FAILED);
+                setStateLoginProcess(obj.REGISTRATION_FAILED);
               });
               // Run the callback outside of angular scope updates.
-              loginPromise.reject(error);
+              signupPromise.reject(error);
             });
-          });
-        }
-        else {
-          $rootScope.$apply(function() {
-            setStateLoggedIn(obj.LOGGED_IN);
-          });
-          loginPromise.resolve(user);
-        }
-      },
-      error: function(user, error) {
-        // Some error checking is done on the client side, so we need to defer
-        // execution here so we don't nestle the angular apply calls.
-        _.defer(function () {
-          $rootScope.$apply(function() {
-            setStateLoginProcess(obj.LOGIN_FAILED);
-          });
-          // Run the callback outside of angular scope updates.
-          loginPromise.reject(error);
+          }
         });
-      }
-    });
-    return loginPromise;
-  };
+      return signupPromise;
+    };
 
-  obj.signup = function() {
-    setStateLoginProcess(obj.LOADING);
+    obj.logout = function() {
+      obj.username = '';
+      obj.email = '';
 
-    var signupPromise = new Parse.Promise();
-    var newUser = new Parse.User();
-    newUser.set('username', obj.username);
-    newUser.set('password', obj.password);
+      Parse.User.logOut();
+      setStateLoggedIn(obj.NOT_LOGGED_IN);
+    };
 
-    if (obj.email && (obj.email.length > 0)) {
-      // Only set email if one is provided, otherwise the signup will fail.
-      newUser.set('email', obj.email);
-    }
-
-    newUser.signUp(
-      { ACL: new Parse.ACL() },
-      {
-        success: function(user) {
-          $rootScope.$apply(function () {
-            obj.username = user.getUsername();
-            setStateLoggedIn(obj.LOGGED_IN);
-          });
-          signupPromise.resolve(user);
-        },
-        error: function(user, error) {
-          // Some error checking is done on the client side, for instance if
-          // the user name is empty, so we need to defer execution here so we
-          // don't nestle the angular apply calls.
-          _.defer(function () {
-            $rootScope.$apply(function() {
-              setStateLoginProcess(obj.REGISTRATION_FAILED);
-            });
-            // Run the callback outside of angular scope updates.
-            signupPromise.reject(error);
-          });
-        }
-      });
-    return signupPromise;
-  };
-
-  obj.logout = function() {
-    obj.username = '';
+    obj.username = (Parse.User.current() ? Parse.User.current().getUsername() : '');
     obj.email = '';
 
-    Parse.User.logOut();
-    setStateLoggedIn(obj.NOT_LOGGED_IN);
-  };
+    return obj;
+  }]);
 
-  obj.username = (Parse.User.current() ? Parse.User.current().getUsername() : '');
-  obj.email = '';
-
-  return obj;
-}]);
-
-
-/**
- * @brief Service to translate error codes from Parse to the application
- *   language.
- *
- * Currently only swedish is supported.
- */
-democracyServices.factory('ParseErrorService', [ function() {
-  var errorCodesSv = { };
-  errorCodesSv[Parse.Error.USERNAME_TAKEN] = 'Användarnamnet är upptaget.';
-  errorCodesSv[Parse.Error.ACCOUNT_ALREADY_LINKED] = 'Kontot är redan länkat till en annan användare.';
-  errorCodesSv[Parse.Error.CACHE_MISS] = 'Cache miss.';
-  errorCodesSv[Parse.Error.CONNECTION_FAILED] = 'Anslutningen till servern misslyckades.';
-  errorCodesSv[Parse.Error.EMAIL_MISSING] = 'Epost-adress saknas.';
-  errorCodesSv[Parse.Error.EMAIL_NOT_FOUND] = 'Epost-adressen hittades inte i databasen.';
-  errorCodesSv[Parse.Error.EMAIL_TAKEN] = 'Epost-adressen används redan av ett annat konto.';
-  errorCodesSv[Parse.Error.INTERNAL_SERVER_ERROR] = 'Internt server fel, var god försök igen senare.';
-  errorCodesSv[Parse.Error.INVALID_EMAIL_ADDRESS] = 'Felaktig epost-adress. Kontrollera formatet på din epost-adress.';
-  errorCodesSv[Parse.Error.INVALID_LINKED_SESSION] = 'Fel på facebook kopplingen.';
-  errorCodesSv[Parse.Error.LINKED_ID_MISSING] = 'Användarnamnet är kopplad till ett facebook konto med felaktigt id.';
-  errorCodesSv[Parse.Error.OBJECT_NOT_FOUND] = 'Hittar inte objektet.';
-  errorCodesSv[Parse.Error.PASSWORD_MISSING] = 'Saknar lösenord.';
-  errorCodesSv[Parse.Error.TIMEOUT] = 'Förfrågan tog för lång tid att processa på servern.';
-  errorCodesSv[Parse.Error.USERNAME_MISSING] = 'Saknar användarnamn.';
-  errorCodesSv[Parse.Error.USERNAME_TAKEN] = 'Användarnamnet är upptaget.';
-  errorCodesSv[Parse.Error.VALIDATION_ERROR] = 'Server validering misslyckades.';
-
-  // Override some login error codes with better context aware descriptions
-  var loginErrorCodesSv = { };
-  loginErrorCodesSv[Parse.Error.OBJECT_NOT_FOUND] = 'Felaktigt användarnamn eller lösenord.';
-
-  var obj = { };
 
   /**
-   * @brief Translate error object to user error description.
+   * @brief Service to translate error codes from Parse to the application
+   *   language.
+   *
+   * Currently only swedish is supported.
    */
-  function mapError(error, errorLookup) {
-    var errorMessage = '';
-    if (error && error.code) {
-      if (error.code === Parse.Error.AGGREGATE_ERROR) {
-        // The error contains multiple error messages. This is typically the
-        // result of a Parse.Promise.when([array]) request. In many cases all
-        // the returned errors contain the same result, so get the uniqe error
-        // codes and return them.
-        if (!error.errors) {
-          errorMessage = 'Aggregerat fel utan extra information.';
-        }
-        else {
-          // Create map { errorCode: {Parse.Error} }
-          var errorMap = _.indexBy(_.filter(error.errors, _.identity), _.property('code'));
-          var errorCodes = _.keys(errorMap);
+  democracyServices.factory('ParseErrorService', [ function() {
+    var errorCodesSv = { };
+    errorCodesSv[Parse.Error.USERNAME_TAKEN] = 'Användarnamnet är upptaget.';
+    errorCodesSv[Parse.Error.ACCOUNT_ALREADY_LINKED] = 'Kontot är redan länkat till en annan användare.';
+    errorCodesSv[Parse.Error.CACHE_MISS] = 'Cache miss.';
+    errorCodesSv[Parse.Error.CONNECTION_FAILED] = 'Anslutningen till servern misslyckades.';
+    errorCodesSv[Parse.Error.EMAIL_MISSING] = 'Epost-adress saknas.';
+    errorCodesSv[Parse.Error.EMAIL_NOT_FOUND] = 'Epost-adressen hittades inte i databasen.';
+    errorCodesSv[Parse.Error.EMAIL_TAKEN] = 'Epost-adressen används redan av ett annat konto.';
+    errorCodesSv[Parse.Error.INTERNAL_SERVER_ERROR] = 'Internt server fel, var god försök igen senare.';
+    errorCodesSv[Parse.Error.INVALID_EMAIL_ADDRESS] = 'Felaktig epost-adress. Kontrollera formatet på din epost-adress.';
+    errorCodesSv[Parse.Error.INVALID_LINKED_SESSION] = 'Fel på facebook kopplingen.';
+    errorCodesSv[Parse.Error.LINKED_ID_MISSING] = 'Användarnamnet är kopplad till ett facebook konto med felaktigt id.';
+    errorCodesSv[Parse.Error.OBJECT_NOT_FOUND] = 'Hittar inte objektet.';
+    errorCodesSv[Parse.Error.PASSWORD_MISSING] = 'Saknar lösenord.';
+    errorCodesSv[Parse.Error.TIMEOUT] = 'Förfrågan tog för lång tid att processa på servern.';
+    errorCodesSv[Parse.Error.USERNAME_MISSING] = 'Saknar användarnamn.';
+    errorCodesSv[Parse.Error.USERNAME_TAKEN] = 'Användarnamnet är upptaget.';
+    errorCodesSv[Parse.Error.VALIDATION_ERROR] = 'Server validering misslyckades.';
 
-          if (errorCodes.length == 1) {
-            errorMessage = obj.translateError(errorMap[errorCodes[0]]);
+    // Override some login error codes with better context aware descriptions
+    var loginErrorCodesSv = { };
+    loginErrorCodesSv[Parse.Error.OBJECT_NOT_FOUND] = 'Felaktigt användarnamn eller lösenord.';
+
+    var obj = { };
+
+    /**
+     * @brief Translate error object to user error description.
+     */
+    function mapError(error, errorLookup) {
+      var errorMessage = '';
+      if (error && error.code) {
+        if (error.code === Parse.Error.AGGREGATE_ERROR) {
+          // The error contains multiple error messages. This is typically the
+          // result of a Parse.Promise.when([array]) request. In many cases all
+          // the returned errors contain the same result, so get the uniqe error
+          // codes and return them.
+          if (!error.errors) {
+            errorMessage = 'Aggregerat fel utan extra information.';
           }
           else {
-            errorMessage = 'Multipla fel: ';
-            for (var i = 0; i < errorCodes.length; i++) {
-              if (i > 0) {
-                errorMessage += ', ';
+            // Create map { errorCode: {Parse.Error} }
+            var errorMap = _.indexBy(_.filter(error.errors, _.identity), _.property('code'));
+            var errorCodes = _.keys(errorMap);
+
+            if (errorCodes.length === 1) {
+              errorMessage = obj.translateError(errorMap[errorCodes[0]]);
+            }
+            else {
+              errorMessage = 'Multipla fel: ';
+              for (var i = 0; i < errorCodes.length; i++) {
+                if (i > 0) {
+                  errorMessage += ', ';
+                }
+                errorMessage += mapError(errorMap[errorCodes[i]], errorLookup);
               }
-              errorMessage += mapError(errorMap[errorCodes[i]], errorLookup);
+            }
+          }
+        }
+        else {
+          errorMessage = errorLookup(error.code);
+          if (!errorMessage) {
+            if (error.message) {
+              errorMessage = error.message + ' Error code: ' + error.code;
+            }
+            else {
+              errorMessage = 'Okänt felmeddelande, felkod: ' + error.code + '.';
             }
           }
         }
       }
       else {
-        errorMessage = errorLookup(error.code);
-        if (!errorMessage) {
-          if (error.message) {
-            errorMessage = error.message + ' Error code: ' + error.code;
-          }
-          else {
-            errorMessage = 'Okänt felmeddelande, felkod: ' + error.code + '.';
-          }
-        }
-      }
-    }
-    else {
-      errorMessage = 'Okänt fel utan felkod.';
-    }
-    return errorMessage;
-  }
-
-  obj.translateError = function(error) {
-    return mapError(error, function (errorCode) {
-      return errorCodesSv[errorCode];
-    });
-  };
-  obj.translateLoginError = function(error) {
-    return mapError(error, function (errorCode) {
-      var errorMessage = loginErrorCodesSv[errorCode];
-      if (!errorMessage) {
-        errorMessage = errorCodesSv[errorCode];
+        errorMessage = 'Okänt fel utan felkod.';
       }
       return errorMessage;
-    });
-  };
+    }
 
-  return obj;
-}]);
+    obj.translateError = function(error) {
+      return mapError(error, function (errorCode) {
+        return errorCodesSv[errorCode];
+      });
+    };
+    obj.translateLoginError = function(error) {
+      return mapError(error, function (errorCode) {
+        var errorMessage = loginErrorCodesSv[errorCode];
+        if (!errorMessage) {
+          errorMessage = errorCodesSv[errorCode];
+        }
+        return errorMessage;
+      });
+    };
 
-/**
- * @brief Service to translate error codes from Parse to the application
- *   language.
- *
- * Currently only swedish is supported.
- */
-democracyServices.factory('DataProjectionService', [ function() {
-  var service = {};
+    return obj;
+  }]);
 
-  // Setup projection database
-  var events = [];
-  var e;
+  /**
+   * @brief Service to translate error codes from Parse to the application
+   *   language.
+   *
+   * Currently only swedish is supported.
+   */
+  democracyServices.factory('DataProjectionService',
+      ['$rootScope', 'LoginService', function($rootScope, LoginService) {
+    var service = {};
 
-  e = new dp.Event();
-  e.addTag({type: 'Topic', name: 'Skatt'}); // Note no score
-  e.addTag({type: 'Political Party', name: 'Socialdemokraterna', score: 1});
-  e.addTag({type: 'Political Party', name: 'Vänsterpartiet', score: 1});
-  e.addTag({type: 'Person', name: 'Stefan Löfgren', score: -1});
-  events[events.length] = e;
+    service.db = new dp.Database();
 
-  e = new dp.Event();
-  e.addTag({type: 'Topic', name: 'Skatt'}); // Note no score
-  e.addTag({type: 'Political Party', name: 'Socialdemokraterna', score: -1});
-  e.addTag({type: 'Political Party', name: 'Vänsterpartiet', score: 1});
-  e.addTag({type: 'Person', name: 'Göran Persson', score: 1});
-  events[events.length] = e;
+    // Convert parse tag to event tag
+    function parseTagToEventTag(tag, score) {
+      return {
+        type: tag.get('type'),
+        name: tag.get('name'),
+        score: score
+      };
+    }
 
-  e = new dp.Event();
-  e.addTag({type: 'Topic', name: 'Sjukvård'}); // Note no score
-  e.addTag({type: 'Political Party', name: 'Moderaterna', score: -1});
-  e.addTag({type: 'Political Party', name: 'Vänsterpartiet', score: 1});
-  e.addTag({type: 'Person', name: 'Fredrik Reinfeldt', score: -1});
-  events[events.length] = e;
+    // Convert data from db.histogram to something D3 understands
+    service.histogramToD3Series = function(data, axis) {
+      var result = {};
+      for (var key in data) {
+        var values = data[key];
+        for (var axisId = 0; axisId < axis.length; axisId++) {
+          var key2 = axis[axisId];
+          var resultValues = result[key2];
+          if (!resultValues) {
+            resultValues = {
+              key: key2,
+              values: []
+            };
+            result[key2] = resultValues;
+          }
 
-  e = new dp.Event();
-  e.addTag({type: 'Topic', name: 'Sjukvård'}); // Note no score
-  e.addTag({type: 'Political Party', name: 'Socialdemokraterna', score: -1});
-  e.addTag({type: 'Political Party', name: 'Vänsterpartiet', score: 1});
-  e.addTag({type: 'Person', name: 'Göran Persson', score: 1});
-  events[events.length] = e;
+          resultValues.values[resultValues.values.length] = {
+            label: key,
+            value: values[key2]
+          };
+        }
+      }
 
+      // Convert the outermost object to an array
+      var resultArray = [];
+      for (key in result) {
+        resultArray[resultArray.length] = result[key];
+      }
 
-  service.db = new dp.Database(events);
-  return service;
-}]);
+      return resultArray;
+    };
 
+    function updateData() {
+      if (LoginService.stateLoggedIn === LoginService.LOGGED_IN) {
+        var currentUser = Parse.User.current();
+
+        // Setup query for fetching user data
+        var Page = Parse.Object.extend('Page');
+        var pages = new Parse.Query(Page);
+        pages.include('positive_tags');
+        pages.include('negative_tags');
+        pages.include('topic');
+        pages.equalTo('user', currentUser);
+
+        pages.find().then(function(pages) {
+          var events = [];
+
+          // Create events from the returned pages
+          for (var pageId = 0; pageId < pages.length; pageId++) {
+            var page = pages[pageId];
+            var e = new dp.Event();
+
+            // Add topic
+            var topic = page.get('topic');
+            if (topic) {
+              e.addTag(parseTagToEventTag(topic));
+            }
+
+            // Add positive tags
+            var positiveTags = page.get('positive_tags');
+            if (positiveTags) {
+              positiveTags.forEach(function(tag) {
+                if (tag) {
+                  e.addTag(parseTagToEventTag(tag, 1));
+                }
+              });
+            }
+
+            // Add negative tags
+            var negativeTags = page.get('negative_tags');
+            if (negativeTags) {
+              negativeTags.forEach(function(tag) {
+                if (tag) {
+                  e.addTag(parseTagToEventTag(tag, -1));
+                }
+              });
+            }
+
+            // Save the event
+            events[events.length] = e;
+          }
+
+          // Update the database
+          $rootScope.$apply(function() {
+            service.db = new dp.Database(events);
+          });
+        });
+      }
+    }
+    // Coalesce update data requests when we get them from multiple controls
+    service.updateData = _.debounce(updateData, 300, true);
+
+    return service;
+  }]);
 }());
