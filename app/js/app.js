@@ -16,16 +16,19 @@
  * along with Demokratiappen.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-var democracyApp = angular.module('democracyApp', [
-  'ngRoute',
-  'democracy.controller',
-  'democracy.service'
-]);
+(function() {
+  'use strict';
+
+  var democracyApp = angular.module('democracyApp', [
+    'ngRoute',
+    'democracy.controller',
+    'democracy.service'
+  ]);
 
 
-democracyApp.config(['$routeProvider',
-  function($routeProvider) {
-    var base = ''
+  democracyApp.config(['$routeProvider',
+      function($routeProvider) {
+    var base = '';
     $routeProvider.
       when('/addPage', {
         templateUrl: base + '/view/addPage.html',
@@ -55,3 +58,4 @@ democracyApp.config(['$routeProvider',
         redirectTo: '/login'
       });
   }]);
+}());

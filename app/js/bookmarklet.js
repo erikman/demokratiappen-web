@@ -1,4 +1,4 @@
-javascript:function dar1() {
+function dar1() {
   var d = document, z, b = d.body, l = d.location;
 
   try {

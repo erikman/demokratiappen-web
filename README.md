@@ -8,6 +8,24 @@ about society. You can affect your environment by becomming aware of your own
 political optinions, this helps you decide how you want to shape your day
 to day life and your future.
 
+## Setup
+The web application depends on
+
+* node-js
+* bower
+* grunt
+
+You need to setup a connection to the database backend by copying
+`app/js/initialize_parse.js.template` to `app/js/initialize_parse.js` and
+filling in the required fields.
+
+Then execute:
+
+    npm install
+    grunt serve
+
+and you should see a brower opening with the login page of the web application.
+
 ## Read More
 For more information about this project and to try it out,
 please visit our homepage at [demokratiappen.se](http://demokratiappen.se).

@@ -1,0 +1,27 @@
+{
+  "name": "Demokratiappen",
+  "version": "0.0.0",
+  "homepage": "https://github.com/demokratiappen",
+  "authors": [
+    "hej@demokratiappen.se"
+  ],
+  "main": "app/index.html",
+  "license": "GNU GENERAL PUBLIC LICENSE",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "app/bower_components"
+  ],
+  "dependencies": {
+    "angular": "1.2.16",
+    "json3": "~3.2.6",
+    "es5-shim": "~2.1.0",
+    "jquery": "~1.11.0",
+    "bootstrap": "~3.1.1",
+    "angular-sanitize": "1.2.16",
+    "angular-route": "1.2.16",
+    "angular-animate": "1.2.16",
+    "underscore": "1.6.0"
+  }
+}
