@@ -19,6 +19,10 @@
 (function() {
   'use strict';
 
+  // Forward declare modules and dependencies between modules
+  angular.module('democracy.service', []);
+  angular.module('democracy.controller', ['democracy.service']);
+
   var democracyApp = angular.module('democracyApp', [
     'ngRoute',
     'nvd3ChartDirectives',

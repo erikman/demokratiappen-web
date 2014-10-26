@@ -146,7 +146,7 @@ module.exports = function(grunt) {
           closeTag: '<!-- end script template tags -->'
         },
         src: [
-          '<%= appPath %>/js/*.js',
+          '<%= appPath %>/js/{,*/}*.js',
           '!<%= appPath %>/js/bookmarklet.js'
         ],
         dest: '<%= appPath %>/index.html'
@@ -253,7 +253,7 @@ module.exports = function(grunt) {
       },
       dist: {
         src: [
-          '<%= appPath %>/js/**/*.js',
+          '<%= appPath %>/js/{,*/}*.js',
           '!<%= appPath %>/js/bookmarklet.js'
         ],
         dest: '<%= distPath %>/js/<%= pkg.name %>.js'

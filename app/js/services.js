@@ -23,7 +23,7 @@
 (function() {
   'use strict';
 
-  var democracyServices = angular.module('democracy.service', []);
+  var democracyServices = angular.module('democracy.service');
 
   democracyServices.factory('ParseInitializer', [ function() {
     initDemokratiappen();
