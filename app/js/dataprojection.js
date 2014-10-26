@@ -74,6 +74,13 @@ var dp = (function() {
   };
 
 
+  dp.Event.prototype.findTag = function(tag) {
+    var topics = this.types[tag.type];
+    var result = topics ? topics[tag.name] : undefined;
+    return result;
+  };
+
+
   /**
    * @brief The tag types we allow.
    */
@@ -126,10 +133,84 @@ var dp = (function() {
 
 
   /**
+   * @brief Describes one assoication rule
+   */
+  var AssociationRule = function(from, to, confidence) {
+    this.from = from;
+    this.to = to;
+    this.confidence = confidence;
+  };
+
+  AssociationRule.prototype.apply = function(object) {
+    // If we already have the target type, skip this rule
+    if (object.findTag(this.to)) {
+      return null;
+    }
+
+    // Check if the object contains the from set
+    var matchesFromSet = true;
+    for (var i = 0; matchesFromSet && i < this.from.length; i++) {
+      var fromTag = this.from[i];
+      matchesFromSet = !!object.findTag(fromTag);
+    }
+
+    var result = null;
+    if (matchesFromSet) {
+      // Return the result set
+      result = {
+        type: this.to.type,
+        name: this.to.name,
+        distance: 1.0 - this.confidence // TODO: reevaluate using distance vs using confidence
+      };
+    }
+    return result;
+  };
+
+
+  /**
    * @brief Class for projecting an event onto a type axis
    */
   var TypeProjection = function(type) {
     this.type = type;
+    this.associationRules = [];
+  };
+
+  TypeProjection.prototype.applyAssociationRules = function(object) {
+    var results = [];
+    this.associationRules.forEach(function (rule) {
+      var ruleResults = rule.apply(object);
+      if (ruleResults) {
+        results[results.length] = ruleResults;
+      }
+    });
+    return results;
+  };
+
+  /**
+   * @brief Calculate distance from event to target type
+   *
+   * @return {name, distance, score} or undefined if no mapping was found.
+   */
+  TypeProjection.prototype.mapTags = function(object, distance) {
+    // Check for direct result of this event
+    var results = [];
+    var typeTags = object.types[this.type];
+    if (typeTags) {
+      for (var key in typeTags) {
+        var score = typeTags[key].score;
+        if (!score) {
+          score = object.meanScore;
+        }
+
+        results[results.length] = {
+          type: this.type,
+          name: key,
+          score: score,
+          distance: distance
+        };
+      }
+    }
+    return results;
   };
 
 
@@ -140,25 +221,20 @@ var dp = (function() {
    */
   TypeProjection.prototype.map = function(object) {
     // Check for direct result of this event
-    var results = [];
-    var typeTags = object.types[this.type];
-    if (typeTags) {
-      for (var key in typeTags) {
-        var score = typeTags[key].score;
-        if (!score) {
-          score = object.meanScore();
-        }
+    var results = this.mapTags(object, 0);
 
-        results[results.length] = {
-          type: this.type,
-          name: key,
-          score: score,
-          distance: 0
-        };
+    // If no direct results are found, try to map the object onto the axis.
+    if (results.length === 0) {
+      var derivedTags = this.applyAssociationRules(object);
+      if (derivedTags.length > 0) {
+        var newObject = object.clone();
+        newObject.appendTags(derivedTags);
+
+        // We have created new tags, lets try to map onto main axis again.
+        results = this.mapTags(newObject);
       }
     }
 
-    // TODO: If no direct results are found, try to map the object onto the axis.
     return results;
   };
 

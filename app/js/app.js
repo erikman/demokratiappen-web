@@ -26,7 +26,6 @@
     'democracy.service'
   ]);
 
-
   democracyApp.config(['$routeProvider',
       function($routeProvider) {
     var base = '';
