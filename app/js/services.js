@@ -149,6 +149,7 @@
           success: function(user) {
             $rootScope.$apply(function () {
               obj.username = user.getUsername();
+              obj.email = user.getEmail();
               setStateLoggedIn(obj.LOGGED_IN);
             });
             signupPromise.resolve(user);
@@ -177,8 +178,41 @@
       setStateLoggedIn(obj.NOT_LOGGED_IN);
     };
 
+    obj.isLinkedToFacebook = function() {
+      return Parse.FacebookUtils.isLinked(Parse.User.current());
+    };
+
+    obj.linkToFacebook = function() {
+      var linkPromise = new Parse.Promise();
+      Parse.FacebookUtils.link(Parse.User.current(), null, {
+        success: function() {
+          linkPromise.resolve();
+        },
+        error: function(user, error) {
+          linkPromise.reject(error);
+        }
+      });
+
+      return linkPromise;
+    };
+
+    obj.unlinkFromFacebook = function() {
+      var unlinkPromise = new Parse.Promise();
+
+      Parse.FacebookUtils.unlink(Parse.User.current(), {
+        success: function() {
+          unlinkPromise.resolve();
+        },
+        error: function(user, error) {
+          unlinkPromise.reject(error);
+        }
+      });
+
+      return unlinkPromise;
+    };
+
     obj.username = (Parse.User.current() ? Parse.User.current().getUsername() : '');
-    obj.email = '';
+    obj.email = (Parse.User.current() ? Parse.User.current().getEmail() : '');
 
     return obj;
   }]);

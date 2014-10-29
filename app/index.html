@@ -56,7 +56,7 @@
         <div class="col-xs-12">
           <h1>Demokratiappen</h1>
           <div ng-show="loginService.stateLoggedIn == loginService.LOGGED_IN">
-            <i ng-if="loginService.stateLoggedIn == 0">{{loginService.username}}</i>
+            <i ng-if="loginService.stateLoggedIn == 0"><a href="#/userSettings">{{loginService.username}}</a></i>
             <span id="logout"><a ng-click="loginService.logout();" href="#">Logga ut</a></span>
           </div>
         </div>
@@ -100,6 +100,7 @@
 <script type="text/javascript" src="js/controllers/party.js"></script>
 <script type="text/javascript" src="js/controllers/tagsperdate.js"></script>
 <script type="text/javascript" src="js/controllers/topic.js"></script>
+<script type="text/javascript" src="js/controllers/userSettings.js"></script>
 <script type="text/javascript" src="js/dataprojection.js"></script>
 <script type="text/javascript" src="js/initialize_parse.js"></script>
 <script type="text/javascript" src="js/services.js"></script>

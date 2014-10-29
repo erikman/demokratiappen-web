@@ -61,6 +61,9 @@
       when('/signup', {
         templateUrl: base + '/view/login.html',
       }).
+      when('/userSettings', {
+        templateUrl: base + '/view/userSettings.html',
+      }).
       otherwise({
         redirectTo: '/login'
       });

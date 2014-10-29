@@ -1,0 +1,12 @@
+<div ng-include="'/view/login.html'"></div>
+
+<div data-ng-controller="UserSettingsController" data-ng-hide="loginService.stateLoggedIn != loginService.LOGGED_IN" class="well">
+  <p>Användarnamn: {{loginService.username}}</p>
+  <p>Email: {{loginService.email}}</p>
+
+  <button data-ng-click="loginService.linkToFacebook();" ng-class="{'btn': true, 'btn-primary': true, 'disabled': LoginService.IsLinkedToFacebook()}">Link to facebook</button>
+  <button data-ng-click="loginService.unlinkFromFacebook();" ng-class="{'btn': true, 'btn-primary': true, 'disabled': !LoginService.IsLinkedToFacebook()}">Unlink from facebook</button>
+
+  <p>Change my password</p>
+  <p>Remove user</p>
+</div>
